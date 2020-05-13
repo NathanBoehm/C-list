@@ -1,49 +1,93 @@
-#include <stdio.h>
+#ifndef CLIST_H
+#define CLIST_H
 
-#define LIST_MEM -1
+//#define ERR_LIST_MEM -1
+#define _LIST_BASE_SIZE (size_t)10000 
+#define _JUMP_TABLE_INCR 1000
 
-union Data {
-    int i;
-    float f;
-    unsigned u;
-    long l;
-    long long ll;
-    unsigned long ul;
-    char c;
-    char* s;
-    void* ptr;
-    //your data here
-};
+#ifndef DataType
+#define DataType int
+#endif
 
-struct _ListEntry {
-    Data data;
-    _ListEntry* next;
-};
+#ifndef FreeListItems
+#define FreeListItems 0
+#endif
 
-#define _LIST_BASE_SIZE 10000 
-struct list {
-    _ListEntry* head;
+typedef struct _list_entry {
+    DataType data;
+    struct _list_entry* next;
+} _ListEntry;
+
+typedef struct list {
     size_t size;
-    size_t max_size;
+
+    _ListEntry* _head;
+    size_t _max_size;
     _ListEntry** _jump_table;
-};
+} List;
+
+void _partial_free(List* l, size_t num_entries)
+{
+    _ListEntry* current = l->_head;
+    _ListEntry* next;
+    size_t i;
+    for (i = 0; i < num_entries; i++) {
+        next = current->next;
+        if (FreeListItems) {
+            free(current->data);
+            current->data = NULL;
+        }
+        free(current);
+        current->next = NULL;
+        current = next;
+    }
+    free(l->_jump_table);
+    l->_jump_table = NULL;
+    l->_max_size = 0;
+    l->size = 0;
+    free(l);
+}
 
 struct list* new_list(void) 
 {
-    struct list* l = (struct list*)calloc(1, sizeof(struct list));
-    l->head = (struct _ListEntry*)calloc(1, sizeof(struct _ListEntry));
-    struct _ListEntry* prev = l->head;
+    //allocate list struct
+    List* l = (List*)calloc(1, sizeof(List));
+    if (!l) return NULL;
+
+    //allocate jump table
+    l->_jump_table = (_ListEntry**)calloc(_LIST_BASE_SIZE % _JUMP_TABLE_INCR, sizeof(_ListEntry*));
+    if (!l->_jump_table) {
+        free(l);
+        return NULL;
+    }
+
+    //allocate first node
+    l->_head = (_ListEntry*)calloc(1, sizeof(_ListEntry));
+    if (!l->_head) {
+        free(l->_jump_table);
+        free(l);
+        return NULL;
+    }
+    _ListEntry* prev = l->_head;
+
+    //allocate _LIST_BASE_SIZE worth of connected nodes
     size_t i; for (i = 0; i < _LIST_BASE_SIZE; i++) {
-        struct _ListEntry* le = (struct _ListEntry*)calloc(1, sizeof(struct _ListEntry));
+        _ListEntry* le = (_ListEntry*)calloc(1, sizeof(_ListEntry));
+        if (!le) {
+            _partial_free(l, i-1);
+            return NULL;
+        }
         prev->next = le;
         prev = le;
     }
     l->size = 0;
-    l->max_size = _LIST_BASE_SIZE;
+    l->_max_size = _LIST_BASE_SIZE;
     return l;
 }
 
-int free_list(struct list* l) 
+void free_list(List* l)
 {
-    
+    _partial_free(l, l->size);
 }
+
+#endif
