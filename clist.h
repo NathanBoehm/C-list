@@ -175,8 +175,7 @@ _list_pointer_at(List* l, size_t index)
     {
         char arg_as_string[20];
         sprintf(arg_as_string, "(%d)", index);
-        ERROR_HANDLER(__FILE__, "list_at()", 
-                      arg_as_string, "Index out of range!");
+        ERROR_HANDLER("list_at()", arg_as_string, "Index out of range!");
         return NULL;
     }
 }
@@ -193,17 +192,23 @@ list_at(List* l, size_t index)
 
 /*
 Adds the given value to the given list.  
+Calls ERROR_HANDLER if there is a memory allocation error,
+User must free list on a memory allocation error in list_add().  
 */
 void
 list_add(List* l, LIST_DATA_TYPE value)
 {
     if (l->size == l->_max_size) {
-        long long status = _allocate_n_nodes(_list_pointer_at(l, l->size));
+        long long status = _allocate_n_nodes((_list_pointer_at(l, l->size)),
+                                             l->size);
         if (status != -1) {
-
+            l->size += status; //Update # of allocated nodes.  
+            ERROR_HANDLER("list_add()", "N/A", "Memory allocation error!");
+            return;
         }
-
+        l->_max_size *= 2;
     }
+
 }
 
 /*
