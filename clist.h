@@ -3,9 +3,9 @@
 // clist.h
 // Defines an optionally sorted, header only, list structure with 
 // constant element access time and constant add() (on average), insert() 
-// and remove() time.  API includes standard list operations, at(), insert(),
+// and remove() time.  API includes standard list operations, get(), insert(),
 // remove(), add(), pop(), etc.  A sorted list will be doubly linked,
-// otherwise the list will singly linked.
+// otherwise the list will singly linked.  
 //
 // Created by Nathan Boehm, 2020.  
 //
@@ -20,9 +20,6 @@
 
 enum Constants
 {
-    //error codes
-    MEMORY_ALLOCATION_ERROR = (int)-1,
-
     _JUMP_TABLE_INCREMENT = (int)1000,
     _INITIAL_JUMP_TABLE_SIZE = (unsigned)10
 };
@@ -39,16 +36,16 @@ enum Constants
 
 /*
 Default sorting function, items are sorted smallest first. If a < b, then
-it will come earlier in the list.
+it will come earlier in the list.  
 */
-int less_than(LIST_DATA_TYPE a, LIST_DATA_TYPE b) { return a < b; }
+int _default_less_than(LIST_DATA_TYPE a, LIST_DATA_TYPE b) { return a < b; }
 
 #if LIST_SORTED && !(defined LEFT_BEFORE_RIGHT)
 //Sorting function
-#define LEFT_BEFORE_RIGHT less_than
+#define LEFT_BEFORE_RIGHT _default_less_than
 #endif
 
-//convience option to have list items freed with the list.
+//convience option to have list items freed with the list.  
 #ifndef FREE_LIST_ITEMS
 #define FREE_LIST_ITEMS 0
 #endif
@@ -87,13 +84,15 @@ typedef struct list {
     _ListEntry** _jump_table;
 } List;
 
-
 _ListEntry* new_list_entry(LIST_DATA_TYPE value)
 {
     _ListEntry* new_le = (_ListEntry*)calloc(1, sizeof(_ListEntry));
     new_le->value = value;
     return new_le;
 }
+
+typedef int (*filter_function) (LIST_DATA_TYPE);
+
 
 /*
 Returns a newly allocated list on success or NULL if memory allocation failed.  
@@ -127,7 +126,8 @@ _list_pointer_at(List* l, unsigned long index)
 {
     //Start at the closest multiple of _JUMP_TABLE_INCREMENT,
     //then iterate to reach the desired index.
-    if (index < l->size) {
+    if (index < l->size) 
+    {
         unsigned long jump_location = index / _JUMP_TABLE_INCREMENT;
         _ListEntry* start = l->_jump_table[jump_location];
         unsigned long distance_to_destination = index % _JUMP_TABLE_INCREMENT;
@@ -140,7 +140,8 @@ _list_pointer_at(List* l, unsigned long index)
         return destination;
     }
     //Error, index out of range.  
-    else {
+    else
+    {
         char arg_as_string[20];
         sprintf(arg_as_string, "(%ld)", index);
         ERROR_HANDLER("list_at()", arg_as_string, "Index out of range!");
@@ -160,56 +161,72 @@ list_get(List* l, unsigned long index)
 }
 
 /*
-Swaps the given node swith the one previous to it.  
+Internal function that checks if the position of the _ListEntry currently 
+being sorted within the list (or the _ListEntry prev to it) corresponds to
+a _jump_table location, if so, it updates the _jump_table accordingly.  
 */
-void
-_swap_back(List* l, _ListEntry* entry)
+void _list_adjust_jump_table(_ListEntry* le, List* l, unsigned long list_pos)
 {
-    if (entry->prev == l->_head) {
-        _ListEntry* former_head = l->_head;
-        l->_head = entry;
-        l->_head->prev = NULL;
+    unsigned long list_pos_mod =  list_pos % _JUMP_TABLE_INCREMENT;
+    unsigned long jump_table_pos = list_pos / _JUMP_TABLE_INCREMENT;
 
-        former_head->prev = l->_head;
-        former_head->next = l->_head->next;
-        l->_head->next = former_head;
+    if (list_pos_mod == 0) {
+        //le is a jump table entry.  
+        l->_jump_table[jump_table_pos] = le->prev; 
+    }
+    else if (list_pos_mod == 1) {
+        //le->prev is a jump table entry.  
+        l->_jump_table[jump_table_pos] = le;
+    }
+}
+
+/*
+Internal function that swaps the given _ListEntry with the one previous to it
+in the list and updates the _jump_table, _head and _tail, if necessary.  
+*/
+void _list_swap_back(_ListEntry* le_to_sort, List* l, unsigned long list_pos)
+{
+    _list_adjust_jump_table(le_to_sort, l, list_pos);
+
+    _ListEntry* former_prev = le_to_sort->prev;
+    if (le_to_sort->next == NULL) { //le_to_sort is the tail.  
+        former_prev->next = NULL;
+        l->_tail = former_prev;
     }
     else {
-        entry->prev->next = entry->next;
-        entry->next->prev = entry->prev;
-        entry->next = entry->prev;
-        
-        entry->prev->prev->next = entry; //prev has not changed yet.  
-        entry->prev = entry->prev->prev;
-        entry->next->prev = entry;
+        former_prev->next = le_to_sort->next;
+        le_to_sort->next->prev = former_prev;
     }
+    le_to_sort->next = former_prev;
+
+    if (former_prev->prev == NULL) { //former_prev is the head.  
+        le_to_sort->prev = NULL;  
+        l->_head = le_to_sort;
+    }
+    else {
+        le_to_sort->prev = former_prev->prev;
+        former_prev->prev->next = le_to_sort;
+    }
+    former_prev->prev = le_to_sort;
 }
 
-/*Sorts the current list->_tail node into place, according to the
-LEFT_BEFORE_RIGHT rule. Replaces list->tail if necessary.*/
+/*
+Internal function that Sorts the current list->_tail node into place,
+according to the LEFT_BEFORE_RIGHT rule. Replaces list->tail if necessary.
+*/
 void
-_sort_last(List* l)
+_list_sort_last(List* l)
 {
-    if (l->size > 1 && LEFT_BEFORE_RIGHT(l->_tail, l->_tail->prev)) {
-        //replace tail pointer
-        _ListEntry* former_tail = l->_tail;
-        l->_tail = l->_tail->prev;
-        l->_tail->next = NULL;
+    unsigned long list_pos = l->size - 1;
+    _ListEntry* le_to_sort = l->_tail;
 
-        l->_tail->prev->next = former_tail;
-        former_tail->prev = l->_tail->prev;
-        former_tail->next = l->_tail;
-        l->_tail->prev = former_tail;
-
-        //swap into place
-        while (LEFT_BEFORE_RIGHT(former_tail, former_tail->prev) &&
-                                 former_tail->prev != NULL)
-        { 
-            _swap_back(l, former_tail);
-        }
+    while (le_to_sort != l->_head &&
+           LEFT_BEFORE_RIGHT(le_to_sort->value, le_to_sort->prev->value))
+    {
+        _list_swap_back(le_to_sort, l, list_pos);
+        --list_pos;
     }
 }
-
 
 /*
 Adds the given value to the given list.  
@@ -237,7 +254,7 @@ list_add(List* l, LIST_DATA_TYPE value)
     l->size++;
 
     #if LIST_SORTED
-    _sort_last(l);
+    if (l->size > 1) _list_sort_last(l);
     #endif
 }
 
@@ -249,7 +266,8 @@ free_list(List* l)
 {
     _ListEntry* current = l->_head;
     unsigned long i;
-    for (i = 0; i < l->size; i++) {
+    for (i = 0; i < l->size; i++) 
+    {
         _ListEntry* next = current->next;
         current->next = NULL;
         current->prev = NULL;

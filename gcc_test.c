@@ -6,12 +6,10 @@ enum consts {
 
 int main(int argc, char* argv[])
 {
-    unsigned long index = 1;
-    unsigned long div = index / J;
-    printf("%d\n", div);
     List* l = new_list();
-    list_add(l, (void*)0);
-    list_add(l, (void*)1);
-    printf("%p\n", list_get(l, 1));
+    size_t i = 0;
+    for (; i < 10000; i++) {
+        list_add(l, (void*)i);
+    }
     free_list(l);
 }

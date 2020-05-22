@@ -52,20 +52,25 @@ void test_add_and_get(void)
 void test_sorting(void) 
 {
     List* l = new_list();
-    size_t i = 10000;
-    for (; i >= 1; i--)
+    long i = 9999;
+    for (; i >= 0; i--)
     {
         list_add(l, (void*)i);
-        TEST_CHECK_(l->size == 10001 - i, "expected: %lu got:%lu\n",
+        TEST_CHECK_(l->size == 10000 - i, "expected: %lu got:%lu\n",
                     l->size, 10000 - i);
         TEST_CHECK_(l->_head->value == (void*)i,
                     "expected: %lu got: %lu\n", i, (size_t)l->_head->value);
+        TEST_CHECK(l->_tail->value == (void*)9999);
+        //no _head->next if there is only one entry
+        if (i < 9999) { TEST_CHECK(l->_head->next->value == (void*)i+1); }
     }
-    /*
-    for (i = 9; i >= 0; i--) {
-        TEST_CHECK(l->_jump_table[i]->value == i * 1000);
+
+    for (i = 9; i >= 1; i--) {
+        TEST_CHECK_(l->_jump_table[i]->value == (void*)(i * 1000),
+                    "expected: %lu got: %lu\n",
+                    (size_t)(i * 1000),
+                    (size_t)l->_jump_table[i]->value);
     }
-    */ //not working yet
 }
 
 TEST_LIST = {
