@@ -1,4 +1,4 @@
-/////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 //
 // clist.h
 // Defines an optionally sorted, header only, list structure with 
@@ -9,7 +9,7 @@
 //
 // Created by Nathan Boehm, 2020.  
 //
-/////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 
 
 #ifndef CLIST_H
@@ -66,7 +66,8 @@ int default_error_handler(char* func, char* arg, char* msg)
 #define ERROR_HANDLER default_error_handler
 #endif
 
-typedef struct _list_entry {
+typedef struct _list_entry 
+{
     LIST_DATA_TYPE value;
     struct _list_entry* next;
 
@@ -76,12 +77,14 @@ typedef struct _list_entry {
     #endif
 } _ListEntry;
 
-typedef struct list {
+typedef struct list 
+{
     unsigned long size;
 
     _ListEntry* _head;
     _ListEntry* _tail;
     _ListEntry** _jump_table;
+    unsigned long _jump_table_size;
 } List;
 
 _ListEntry* new_list_entry(LIST_DATA_TYPE value)
@@ -99,7 +102,7 @@ Returns a newly allocated list on success or NULL if memory allocation failed.
 User must free with free_list if the value returned is not NULL.  
 Does not call the ERROR_HANDLER function.  
 */
-struct list* 
+List*
 new_list(void)
 {
     //Allocate list struct.  
@@ -109,10 +112,12 @@ new_list(void)
     //Allocate jump table.  
     l->_jump_table = (_ListEntry**)\
     calloc(_INITIAL_JUMP_TABLE_SIZE, sizeof(_ListEntry*));
-    if (!l->_jump_table) {
+    if (!l->_jump_table)
+    {
         free(l);
         return NULL;
     }
+    l->_jump_table_size = _INITIAL_JUMP_TABLE_SIZE;
 
     return l;
 }
@@ -134,7 +139,8 @@ _list_pointer_at(List* l, unsigned long index)
 
         _ListEntry* destination = start;
         unsigned long i;
-        for (i = 0; i < distance_to_destination; i++) {
+        for (i = 0; i < distance_to_destination; i++)
+        {
             destination = destination->next;
         }
         return destination;
@@ -157,7 +163,56 @@ LIST_DATA_TYPE
 list_get(List* l, unsigned long index)
 {
     _ListEntry* ptr = _list_pointer_at(l, index);
-    return ptr ? ptr->value : ptr;
+    return ptr ? ptr->value : (LIST_DATA_TYPE)ptr;
+}
+
+void _list_remove(List* l, _ListEntry* le, unsigned long index)
+{
+    if (le == l->_head) {
+        l->_head = NULL;
+        l->_tail = NULL;
+    }
+    else if (le == l->_tail) {
+        le->prev->next = NULL;
+
+    }
+    else {
+
+    }
+    --l->size;
+    _free_list_entry(le);
+}
+
+/*
+Removes the last entry from the list and returns its value.
+*/
+LIST_DATA_TYPE list_pop(List* l)
+{
+    if (l->size > 1)
+    {
+        //Update _jump_table.  
+        if (l->size % _JUMP_TABLE_INCREMENT == 0) 
+        {
+            l->_jump_table[l->size / _JUMP_TABLE_INCREMENT] = NULL;
+        }
+
+        //Replace _tail.  
+        _ListEntry* former_tail = l->_tail;
+        former_tail->prev->next = NULL;
+        l->_tail = former_tail->prev;
+        --l->size;
+
+        //Free former tail and return value.  
+        former_tail->prev = NULL;
+        LIST_DATA_TYPE value = former_tail->value;
+        free(former_tail);
+        return value;
+    }
+    else
+    {
+        ERROR_HANDLER("list_pop()", "NA", "List contains no items!");
+        return (LIST_DATA_TYPE)NULL;
+    }
 }
 
 /*
@@ -170,14 +225,43 @@ void _list_adjust_jump_table(_ListEntry* le, List* l, unsigned long list_pos)
     unsigned long list_pos_mod =  list_pos % _JUMP_TABLE_INCREMENT;
     unsigned long jump_table_pos = list_pos / _JUMP_TABLE_INCREMENT;
 
-    if (list_pos_mod == 0) {
-        //le is a jump table entry.  
-        l->_jump_table[jump_table_pos] = le->prev; 
-    }
-    else if (list_pos_mod == 1) {
-        //le->prev is a jump table entry.  
+    //le is a jump table entry.  
+    if (list_pos_mod == 0)
+        l->_jump_table[jump_table_pos] = le->prev;
+    //le->prev is a jump table entry.   
+    else if (list_pos_mod == 1) 
         l->_jump_table[jump_table_pos] = le;
-    }
+}
+
+void _list_adjust_jump_table_up(List* l, unsigned long index)
+{
+    //Affected _jump_table entries starting index.  
+    unsigned long i = index / _JUMP_TABLE_INCREMENT;
+    unsigned long largest_jt_index = l->size / _JUMP_TABLE_INCREMENT;
+
+    for (; i < (largest_jt_index-1); i++)
+        l->_jump_table[i] = l->_jump_table[i]->next;
+
+    if (l->size % _JUMP_TABLE_INCREMENT == 0)
+        //in the case of a remove:
+        //if the last element in the list ends on an index location,
+        //repace it with NULL because an element is being removed.
+        l->_jump_table[largest_jt_index] = NULL;
+}
+
+void _list_adjust_jump_table_down(List* l, unsigned long index)
+{
+    //Affected _jump_table entries starting index.  
+    unsigned long i = index / _JUMP_TABLE_INCREMENT;
+    unsigned long largest_jt_index = l->size / _JUMP_TABLE_INCREMENT;
+
+    for (; i < (largest_jt_index-1); i++)
+        l->_jump_table[i] = l->_jump_table[i]->prev;
+
+    if (l->size + 1 % _JUMP_TABLE_INCREMENT)
+        //In the case of an insert:
+        //The last element is being pushed into a _jump_table entry position.  
+        _list_add_jump_table_entry(l, l->_tail);
 }
 
 /*
@@ -211,7 +295,7 @@ void _list_swap_back(_ListEntry* le_to_sort, List* l, unsigned long list_pos)
 }
 
 /*
-Internal function that Sorts the current list->_tail node into place,
+Internal function that sorts the current list->_tail node into place,
 according to the LEFT_BEFORE_RIGHT rule. Replaces list->tail if necessary.
 */
 void
@@ -229,6 +313,30 @@ _list_sort_last(List* l)
 }
 
 /*
+Set _jump_table entry if there have been _JUMP_TABLE_INCREMENT additions
+since the last jump table entry (or this is the first entry).  
+*/
+void
+_list_add_jump_table_entry(List* l, _ListEntry* jte)
+{
+    if (l->size / _JUMP_TABLE_INCREMENT > l->_jump_table_size)
+    {
+        _ListEntry** new_table = (_ListEntry**)\
+        realloc(l->_jump_table, l->_jump_table_size * 2);
+        if (!new_table)
+        {
+            ERROR_HANDLER("_list_add_jump_table_entry",
+                          "NA",
+                          "Memory allocation error");
+        }
+        else
+            l->_jump_table = new_table;
+    }
+    if (l->size % _JUMP_TABLE_INCREMENT == 0)
+        l->_jump_table[l->size / _JUMP_TABLE_INCREMENT] = jte;
+}
+
+/*
 Adds the given value to the given list.  
 Calls ERROR_HANDLER if there is a memory allocation error,
 User must free list on a memory allocation error in list_add().  
@@ -237,20 +345,16 @@ void
 list_add(List* l, LIST_DATA_TYPE value)
 {
     _ListEntry* le = new_list_entry(value);
-    if (l->size == 0) {
+    if (l->size == 0)
         l->_head = le;
-    }
-    else {
+    else
+    {
         l->_tail->next = le;
         le->prev = l->_tail;
     }
     l->_tail = le;
 
-    //Set jump table entry if there have been _JUMP_TABLE_INCREMENT additions
-    //since the last jump table entry (or this is the first entry).  
-    if (l->size % _JUMP_TABLE_INCREMENT == 0) {
-        l->_jump_table[l->size / _JUMP_TABLE_INCREMENT] = l->_tail;
-    }
+    _list_add_jump_table_entry(l, l->_tail);
     l->size++;
 
     #if LIST_SORTED
@@ -259,7 +363,17 @@ list_add(List* l, LIST_DATA_TYPE value)
 }
 
 /*
-Frees a memory associated with the given list.  
+Frees memory associated with the given _ListEntry*.  
+*/
+void _free_list_entry(_ListEntry* le)
+{
+    le->next = NULL;
+    le->prev = NULL;
+    free(le);
+}
+
+/*
+Frees memory associated with the given list.  
 */
 void
 free_list(List* l)
@@ -268,15 +382,12 @@ free_list(List* l)
     unsigned long i;
     for (i = 0; i < l->size; i++) 
     {
-        _ListEntry* next = current->next;
-        current->next = NULL;
-        current->prev = NULL;
-
         #if FREE_LIST_ITEMS
         free(current->value)
         #endif
 
-        free(current);
+        _ListEntry* next = current->next;
+        _free_list_entry(current);
         current = next;
     }
 

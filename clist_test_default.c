@@ -49,7 +49,7 @@ void test_add_and_get(void)
     free_list(l);
 }
 
-void test_sorting(void) 
+void test_sorting(void)
 {
     List* l = new_list();
     long i = 9999;
@@ -71,6 +71,21 @@ void test_sorting(void)
                     (size_t)(i * 1000),
                     (size_t)l->_jump_table[i]->value);
     }
+    free_list(l);
+}
+
+void test_sorting_random(void)
+{
+    List* l = new_list();
+    long i = 0;
+    for (; i < 1000; i++) {
+        list_add(l, (void*)(rand() % 100000));
+    }
+
+    for (i = 0; i < 999; i++) {
+        TEST_CHECK(list_get(l, i) <= list_get(l, i+1));
+    }
+    free_list(l);
 }
 
 TEST_LIST = {
@@ -79,5 +94,6 @@ TEST_LIST = {
     {"Trying to get an invalid index, is an error", test_get_invalid_index},
     {"Basic add and get checks", test_add_and_get},
     {"List sorting", test_sorting},
+    {"List sorting - random value", test_sorting_random},
     {NULL, NULL}
 };
