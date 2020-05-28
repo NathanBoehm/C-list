@@ -40,13 +40,40 @@ void test_add_and_get(void)
         TEST_CHECK(l->_head->value == (void*)0);
         TEST_CHECK(l->_tail->value == (void*)i);
         TEST_CHECK(l->_head != l->_tail);
-        TEST_CHECK(list_get(l, i) == (void*)i);
+        size_t value = (size_t)list_get(l, i);
+        TEST_CHECK_(value == i, "expected: %lu got: %lu\n",
+                    i, value);
     }
 
     for (i = 9; i > 0; i--) {
         TEST_CHECK(l->_jump_table[i]->value == (void*)(i * 1000));
     }
     free_list(l);
+}
+
+void test_simple_pop(void)
+{
+    List* l = new_list();
+    size_t i = 100;
+    for (; i >= 1; i--)
+    {
+        list_add(l, (void*)i);
+    }
+    
+    TEST_CHECK(l->size == 100);
+    TEST_CHECK(l->_tail->value == (void*)1);
+    for (i = 1; i <= 99; i++)
+    {
+        size_t value = (size_t)list_pop(l);
+        TEST_CHECK_(value == i, "expected: %lu got: %lu\n",
+                    i, value);
+        TEST_CHECK(l->size == 100 - i);
+        TEST_CHECK(l->_tail->value == (void*)i+1);
+    }
+    TEST_CHECK((size_t)list_pop(l) == 100);
+    TEST_CHECK(l->size == 0);
+    TEST_CHECK(l->_head == NULL);
+    TEST_CHECK(l->_tail == NULL);
 }
 
 void test_sorting(void)
@@ -74,6 +101,7 @@ void test_sorting(void)
     free_list(l);
 }
 
+/*
 void test_sorting_random(void)
 {
     List* l = new_list();
@@ -87,13 +115,15 @@ void test_sorting_random(void)
     }
     free_list(l);
 }
+*/
 
 TEST_LIST = {
     {"Constant values", test_constants},
     {"New list has correct intial values", test_new_list_intial_values},
     {"Trying to get an invalid index, is an error", test_get_invalid_index},
     {"Basic add and get checks", test_add_and_get},
-    {"List sorting", test_sorting},
-    {"List sorting - random value", test_sorting_random},
+    {"Basic pop checks", test_simple_pop},
+    //{"List sorting", test_sorting},
+    //{"List sorting - random value", test_sorting_random},
     {NULL, NULL}
 };
