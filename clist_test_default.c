@@ -1,30 +1,58 @@
 #include <../acutest/include/acutest.h>
+
+int ERROR_STATUS = 0;
+
+void 
+clear_error_status(void)
+{
+    ERROR_STATUS = 0;
+}
+
+int error_handler(char* func, char* arg, char* msg)
+{
+    ERROR_STATUS = 1;
+    return 0;
+}
+#define ERROR_HANDLER error_handler
+#define CHECK_ERROR_STATUS TEST_ASSERT(ERROR_STATUS); clear_error_status()
+
 #include <clist.h>
 
-void test_constants(void) {
+void test_constants(void)
+{
     TEST_CHECK(_INITIAL_JUMP_TABLE_SIZE == 10);
     TEST_CHECK(_JUMP_TABLE_INCREMENT == 1000);
 }
 
-void test_new_list_intial_values(void) {
+void test_new_list_intial_values(void)
+{
     List* list = new_list();
+    TEST_ASSERT(list != NULL);
     TEST_CHECK(list->size == 0);
     TEST_CHECK(list->_head == NULL);
     TEST_CHECK(list->_tail == NULL);
+    TEST_CHECK(list->_jump_table != NULL);
+    size_t i = 0;
+    for (; i < _INITIAL_JUMP_TABLE_SIZE; i++)
+        TEST_CHECK(list->_jump_table[i] == NULL);
     free_list(list);
 }
 
 void test_get_invalid_index(void)
 {
     List* list = new_list();
+    TEST_ASSERT(list != NULL);
     TEST_CHECK(list_get(list, 0) == NULL);
+    CHECK_ERROR_STATUS;
     TEST_CHECK(list_get(list, 1) == NULL);
+    CHECK_ERROR_STATUS;
     free_list(list);
 }
 
 void test_add_and_get(void)
 {
     List* l = new_list();
+    TEST_ASSERT(l != NULL);
 
     list_add(l, (void*)0);
     TEST_CHECK(l->size == 1);
@@ -45,20 +73,18 @@ void test_add_and_get(void)
                     i, value);
     }
 
-    for (i = 9; i > 0; i--) {
+    for (i = 9; i > 0; i--)
         TEST_CHECK(l->_jump_table[i]->value == (void*)(i * 1000));
-    }
     free_list(l);
 }
 
 void test_simple_pop(void)
 {
     List* l = new_list();
+    TEST_ASSERT(l != NULL);
     size_t i = 100;
     for (; i >= 1; i--)
-    {
         list_add(l, (void*)i);
-    }
     
     TEST_CHECK(l->size == 100);
     TEST_CHECK(l->_tail->value == (void*)1);
@@ -74,8 +100,214 @@ void test_simple_pop(void)
     TEST_CHECK(l->size == 0);
     TEST_CHECK(l->_head == NULL);
     TEST_CHECK(l->_tail == NULL);
+    free_list(l);
 }
 
+void test_simple_remove(void)
+{
+    List* l = new_list();
+    TEST_ASSERT(l != NULL);
+    size_t i = 0;
+    for (; i <= 100; i++)
+    {
+        list_add(l, (void*)i);
+        //CHECK_ERROR_STATUS;
+    }
+    
+    TEST_CHECK(l->size == 101);
+    TEST_CHECK(l->_tail->value == (void*)100);
+    TEST_CHECK(list_get(l, 0) == (void*)0);
+    TEST_CHECK(list_get(l, 50) == (void*)50);
+    for (i = 1; i < 50; i++)
+    {
+        list_remove(l, 50);
+        TEST_CHECK(list_get(l, 50) == (void*)50 + i);
+        size_t value = (size_t)list_get(l, 50);
+        TEST_CHECK_(value == 50+i, "expected: %lu got: %lu\n",
+                    50+i, value);
+        TEST_CHECK(l->size == 101 - i);
+    }
+    free_list(l);
+}
+
+void test_remove_pop_error_cases(void)
+{
+    List* l = new_list();
+    TEST_ASSERT(l != NULL);
+    TEST_CHECK(list_pop(l) == NULL);
+    CHECK_ERROR_STATUS;
+    list_remove(l, 0);
+    CHECK_ERROR_STATUS;
+    list_add(l, (void*)0);
+    list_remove(l, 1);
+    CHECK_ERROR_STATUS;
+    free_list(l);
+}
+
+void test_large_add(void)
+{
+    List* l = new_list();
+    TEST_ASSERT(l != NULL);
+    size_t i = 0;
+    for (; i < 1000000; i++)
+    {
+        list_add(l, (void*)i);
+        TEST_ASSERT(!ERROR_STATUS);
+    }
+    TEST_CHECK(l->size == 1000000);
+    TEST_CHECK(l->_jump_table_size >= 1000);
+    TEST_CHECK(l->_jump_table[999]->value == (void*)999000);
+    free_list(l);
+}
+
+void test_pop_effect_on_jt(void)
+{
+    List* l = new_list();
+    TEST_ASSERT(l != NULL);
+    size_t i = 0, j = 0;
+    for (; i <= 10000; i++)
+        list_add(l, (void*)i);
+    TEST_CHECK(l->size == 10001);
+    for (i = 0; i < 11; i++)
+        TEST_CHECK_(l->_jump_table[i]->value == (void*)(i * 1000),
+                    "expected: %lu got: %lu\n",
+                    i * 1000,
+                    (size_t)l->_jump_table[i]);
+    for (j = 10; j > 1; j--)
+    {
+        for (i = 0; i < 1000; i++)
+            list_pop(l);
+        TEST_CHECK(l->_jump_table[j] == NULL);
+        TEST_CHECK(l->_jump_table[j-1]->value == (void*)((j-1) * 1000));
+        TEST_CHECK(list_get(l, ((j-1)*1000)) == (void*)((j-1)*1000));
+    }
+    for (i = 0; i < 1000; i++)
+        list_pop(l);
+    TEST_CHECK(l->_jump_table[1] == NULL);
+    TEST_CHECK(l->size == 1);
+    list_pop(l);
+    TEST_CHECK(l->_jump_table[0] == NULL);\
+    TEST_CHECK(l->size == 0);
+    TEST_CHECK(l->_head == NULL);
+    TEST_CHECK(l->_tail == NULL);
+    free_list(l);
+}
+
+void test_remove_effect_on_jt(void)
+{
+    List* l = new_list();
+    TEST_ASSERT(l != NULL);
+    size_t i = 0;
+    for (; i <= 10000; i++)
+        list_add(l, (void*)i);
+    TEST_CHECK(l->size == 10001);
+
+    //remove in the middle.  
+    TEST_CHECK(l->_jump_table[10] != NULL);
+    for (i = 0; i < 1000; i++)
+    {
+        list_remove(l, 5000);
+        TEST_CHECK(list_get(l, 5000) == (void*)5001+i);
+        //every jump_table entry after the 5th (removing at index 5000)
+        //should be moved to the next entry in the list.  
+        size_t j = 5;
+        for (; j < 10; j++)
+            TEST_ASSERT_(l->_jump_table[j]->value == (void*)(j*1000)+(i+1),
+                       "expected: %lu got: %lu\n",
+                        (j*1000)+(i+1),
+                        (size_t)l->_jump_table[j]->value);
+    }
+    //final entry will be removed.  
+    TEST_CHECK(l->_jump_table[10] == NULL);
+
+    //remove at the begining.  
+    TEST_CHECK(l->_jump_table[9] != NULL);
+    for (i = 0; i < 1000; i++)
+    {
+        list_remove(l, 0);
+        TEST_CHECK(list_get(l, 0) == (void*)i+1);
+        TEST_CHECK(l->_head->value == (void*)i+1);
+
+        size_t j = 0;
+        //First half.  
+        for (; j < 4; j++)
+            TEST_ASSERT_(l->_jump_table[j]->value == (void*)(j*1000)+(i+1),
+                        "expected: %lu got: %lu\n",
+                        (size_t)l->_jump_table[j]->value,
+                        (j*1000)+(i+1));
+        //Second half should all have values exactly 1000 larger than there index due to previous removes at 5000.  
+        j = 5;
+        for (; j < 9; j++)
+            TEST_ASSERT_(l->_jump_table[j]->value == (void*)((j+1)*1000)+(i+1),
+                        "expected: %lu got: %lu\n",
+                        (size_t)l->_jump_table[j]->value,
+                        ((j+1)*1000)+(i+1));
+    }
+    TEST_CHECK(l->_jump_table[9] == NULL);
+
+    //remove at end.  
+    TEST_CHECK(l->_jump_table[8] != NULL);
+    for (i = 0; i < 1000; i++)
+    {
+        list_remove(l, l->size-1);
+        TEST_CHECK(list_get(l, l->size-1) == (void*)(10000 - i - 1));
+        TEST_CHECK(l->_tail->value == (void*)10000 - i - 1);
+    }
+    TEST_CHECK(l->_jump_table[8] == NULL);
+
+    //remove rest.  
+    //we've removed 1000, 3 times so remove 7001 more.  
+    for (i = 0; i <= 7000; i++)
+        list_remove(l, l->size-1);
+    TEST_CHECK(l->size == 0);
+    TEST_CHECK(l->_head == NULL);
+    TEST_CHECK(l->_tail == NULL);
+    for (i = 0; i <= 10; i++)
+        TEST_CHECK(l->_jump_table[i] == NULL);
+
+    free_list(l);
+}
+
+void test_random_remove_get(void)
+{
+    List* l = new_list();
+    TEST_ASSERT(l != NULL);
+    size_t i = 0;
+    for (; i <= 10000; i++)
+        list_add(l, (void*)i);
+
+    for (i = 0; i < 10000; i++)
+    {
+        //check that after a remove the same index will
+        //have the value of the ->next of the previous entry
+        size_t index = rand() % (10000 - i);
+        _ListEntry* current_entry = _list_pointer_at(l, index);
+        size_t expected_value = (size_t)current_entry->next->value;
+        list_remove(l, index);
+        size_t new_value = (size_t)list_get(l, index);
+        TEST_CHECK_(expected_value == new_value,
+                    "expected: %lu got: %lu\n",
+                    expected_value,
+                    new_value);
+    }
+    TEST_CHECK(l->size == 1);
+    TEST_CHECK(l->_head != NULL);
+    TEST_CHECK(l->_tail == l->_head);
+    TEST_CHECK(l->_jump_table[0] == l->_head);
+    for (i = 1; i <= 10; i++)
+        TEST_CHECK(l->_jump_table[i] == NULL);
+
+    //Remove final entry.  
+    list_remove(l, 0);
+    TEST_CHECK(l->size == 0);
+    TEST_CHECK(l->_head == NULL);
+    TEST_CHECK(l->_tail == NULL);
+    TEST_CHECK(l->_jump_table[0] == NULL);
+    free_list(l);
+}
+
+
+/*
 void test_sorting(void)
 {
     List* l = new_list();
@@ -101,7 +333,7 @@ void test_sorting(void)
     free_list(l);
 }
 
-/*
+
 void test_sorting_random(void)
 {
     List* l = new_list();
@@ -123,6 +355,12 @@ TEST_LIST = {
     {"Trying to get an invalid index, is an error", test_get_invalid_index},
     {"Basic add and get checks", test_add_and_get},
     {"Basic pop checks", test_simple_pop},
+    {"Basic remove checks", test_simple_remove},
+    {"Remove and pop on invalid indicies cause an error", test_remove_pop_error_cases},
+    {"Large add and effect on jump table", test_large_add},
+    {"pops reorganize jump table", test_pop_effect_on_jt},
+    {"removes reorganize jump table", test_remove_effect_on_jt},
+    {"Series of random removes and gets", test_random_remove_get},
     //{"List sorting", test_sorting},
     //{"List sorting - random value", test_sorting_random},
     {NULL, NULL}

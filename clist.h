@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 enum Constants
 {
@@ -85,6 +86,7 @@ typedef int (*filter_function) (LIST_DATA_TYPE);
 List* new_list(void);
 void  free_list(List*);
 void  list_add(List*, LIST_DATA_TYPE);
+void  list_remove(List*, unsigned long);
 void  sort_list(List* l);
 LIST_DATA_TYPE list_pop(List*);
 LIST_DATA_TYPE list_get(List*, unsigned long);
@@ -183,6 +185,9 @@ _list_pointer_at(List* l, unsigned long index)
     //then iterate to reach the desired index.
     if (index < l->size) 
     {
+        if (index == l->size - 1)
+            return l->_tail;
+
         unsigned long jump_location = index / _JUMP_TABLE_INCREMENT;
         _ListEntry* start = l->_jump_table[jump_location];
         unsigned long distance_to_destination = index % _JUMP_TABLE_INCREMENT;
@@ -198,7 +203,7 @@ _list_pointer_at(List* l, unsigned long index)
     {
         char arg_as_string[20];
         sprintf(arg_as_string, "(%ld)", index);
-        ERROR_HANDLER("list_at()", arg_as_string, "Index out of range!");
+        ERROR_HANDLER("list_at()", arg_as_string, "Index out of bounds!\n");
         return NULL;
     }
 }
@@ -232,10 +237,19 @@ since the last jump table entry (or this is the first entry).
 void
 _list_add_jump_table_entry(List* l, _ListEntry* jte)
 {
-    if (l->size / _JUMP_TABLE_INCREMENT > l->_jump_table_size)
+    if ((l->size - 1) / _JUMP_TABLE_INCREMENT > (l->_jump_table_size - 1))
     {
-        _ListEntry** new_table = (_ListEntry**)\
-        realloc(l->_jump_table, l->_jump_table_size * 2);
+        //_ListEntry** new_table = (_ListEntry**)\
+        realloc(l->_jump_table, (l->_jump_table_size * 2));
+        /*for whatever reason the above method of reallocating memory will
+          result in _jump_table memory being overwritten (consistently on
+          the 12th entry in the _jump_table) which eventually cuases a
+          sigabrt. But the below method works - need to investigate what
+          is happening here, it seems like realloc call is failing but it
+          is not returning a NULL pointer like it is supposed to. */
+        _ListEntry** new_table =\
+        (_ListEntry**)calloc(sizeof(_ListEntry*), l->_jump_table_size * 2);
+
         if (!new_table)
         {
             ERROR_HANDLER("_list_add_jump_table_entry",
@@ -243,10 +257,16 @@ _list_add_jump_table_entry(List* l, _ListEntry* jte)
                           "Memory allocation error");
         }
         else
+        {
+            memcpy(new_table, l->_jump_table,
+                   (l->_jump_table_size) * sizeof(_ListEntry*));
+            free(l->_jump_table);
             l->_jump_table = new_table;
+            l->_jump_table_size *= 2;
+        }
     }
     if ((l->size - 1) % _JUMP_TABLE_INCREMENT == 0)
-        l->_jump_table[l->size / _JUMP_TABLE_INCREMENT] = jte;
+        l->_jump_table[(l->size - 1) / _JUMP_TABLE_INCREMENT] = jte;
 }
 
 /*
@@ -287,13 +307,19 @@ list_pop(List* l)
 }
 
 void
+list_remove(List* l, unsigned long index)
+{
+    _list_remove(l, _list_pointer_at(l, index), index);
+}
+
+void
 _list_remove(List* l, _ListEntry* le, unsigned long index)
 {
     if (index >= l->size)
     {
         char arg_as_string[20];
         sprintf(arg_as_string, "(%ld)", index);
-        ERROR_HANDLER("list_remove()", arg_as_string, "Index out of bounds!");
+        ERROR_HANDLER("list_remove()", arg_as_string, "Index out of bounds!\n");
     }
     else
     {
@@ -312,8 +338,9 @@ _list_remove(List* l, _ListEntry* le, unsigned long index)
             le->prev->next = le->next;
             le->next->prev = le->prev;
         }
-        --l->size;
+        _list_adjust_jump_table_up(l, index);
         _free_list_entry(le);
+        --l->size;
     }
 }
 
@@ -324,14 +351,24 @@ _list_adjust_jump_table_up(List* l, unsigned long index)
     unsigned long i = index / _JUMP_TABLE_INCREMENT;
     unsigned long largest_jt_index = (l->size - 1) / _JUMP_TABLE_INCREMENT;
 
-    for (; i < (largest_jt_index-1); i++)
-        l->_jump_table[i] = l->_jump_table[i]->next;
+    for (; i < (largest_jt_index); i++)
+    {
+        //only advance ptr if index really does come before the jt entry.  
+        //for case exapmle: l->size == 10001 and index == 9001,
+        //dont advance l->jump_table[9]
+        if (index <= (i*1000))
+            l->_jump_table[i] = l->_jump_table[i]->next;
+    }
 
-    if ((l->size - 1) % _JUMP_TABLE_INCREMENT == 0)
+    //handle final jump_table entry if necessary.  
+    if ((l->size - 1) % _JUMP_TABLE_INCREMENT == 0) //largest_jt_index * 1000 == l->size - 1
         //in the case of a remove:
         //if the last element in the list ends on an index location,
         //repace it with NULL because an element is being removed.
         l->_jump_table[largest_jt_index] = NULL;
+    else if (index <= largest_jt_index * 1000)
+        l->_jump_table[largest_jt_index] =\
+        l->_jump_table[largest_jt_index]->next;
 }
 
 void
@@ -363,6 +400,7 @@ sort_list(List* l)
 void
 _merge_sort_list(List* l, _ListEntry* current_head)
 {
+    /***Not Yet Implemented***/
     _ListEntry* new_head, new_tail;
 }
 
