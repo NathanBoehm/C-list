@@ -9,14 +9,7 @@ int main(int argc, char* argv[])
     {
         list_add(l, (void*)i);
     }
-    for (i = 0; i < 10001; i++)
-    {
-        size_t index = rand() % (10000 - i);
-        size_t init_value = (size_t)list_get(l, index);
-        list_remove(l, index);
-        size_t new_value = (size_t)list_get(l, index);
-        if (new_value <= init_value) return -1;
-    }
+    printf("size of long long: %d\nsize of unsinged long: %d\nsizeof long: %d \n", sizeof(long long), sizeof(unsigned long), sizeof(long));
     /*for (i = 0; i < 11; i++)
         printf("jump_table[%d]: %lu\n", i, (size_t)l->_jump_table[i]->value);
 

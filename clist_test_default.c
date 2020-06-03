@@ -208,8 +208,8 @@ void test_remove_effect_on_jt(void)
     {
         list_remove(l, 5000);
         TEST_CHECK(list_get(l, 5000) == (void*)5001+i);
-        //every jump_table entry after the 5th (removing at index 5000)
-        //should be moved to the next entry in the list.  
+        //every jump_table node after the 5th (removing at index 5000)
+        //should be moved to the next node in the list.  
         size_t j = 5;
         for (; j < 10; j++)
             TEST_ASSERT_(l->_jump_table[j]->value == (void*)(j*1000)+(i+1),
@@ -217,7 +217,7 @@ void test_remove_effect_on_jt(void)
                         (j*1000)+(i+1),
                         (size_t)l->_jump_table[j]->value);
     }
-    //final entry will be removed.  
+    //final node will be removed.  
     TEST_CHECK(l->_jump_table[10] == NULL);
 
     //remove at the begining.  
@@ -279,10 +279,10 @@ void test_random_remove_get(void)
     for (i = 0; i < 10000; i++)
     {
         //check that after a remove the same index will
-        //have the value of the ->next of the previous entry
+        //have the value of the ->next of the previous node
         size_t index = rand() % (10000 - i);
-        _ListEntry* current_entry = _list_pointer_at(l, index);
-        size_t expected_value = (size_t)current_entry->next->value;
+        _ListNode* current_node = _list_pointer_at(l, index);
+        size_t expected_value = (size_t)current_node->next->value;
         list_remove(l, index);
         size_t new_value = (size_t)list_get(l, index);
         TEST_CHECK_(expected_value == new_value,
@@ -297,7 +297,7 @@ void test_random_remove_get(void)
     for (i = 1; i <= 10; i++)
         TEST_CHECK(l->_jump_table[i] == NULL);
 
-    //Remove final entry.  
+    //Remove final node.  
     list_remove(l, 0);
     TEST_CHECK(l->size == 0);
     TEST_CHECK(l->_head == NULL);
@@ -320,7 +320,7 @@ void test_sorting(void)
         TEST_CHECK_(l->_head->value == (void*)i,
                     "expected: %lu got: %lu\n", i, (size_t)l->_head->value);
         TEST_CHECK(l->_tail->value == (void*)9999);
-        //no _head->next if there is only one entry
+        //no _head->next if there is only one node
         if (i < 9999) { TEST_CHECK(l->_head->next->value == (void*)i+1); }
     }
 
