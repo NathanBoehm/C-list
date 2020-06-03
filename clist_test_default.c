@@ -28,7 +28,7 @@ void test_new_list_intial_values(void)
 {
     List* list = new_list();
     TEST_ASSERT(list != NULL);
-    TEST_CHECK(list->size == 0);
+    TEST_CHECK(list_size(list) == 0);
     TEST_CHECK(list->head == NULL);
     TEST_CHECK(list->tail == NULL);
     TEST_CHECK(list->jump_table != NULL);
@@ -55,7 +55,7 @@ void test_add_and_get(void)
     TEST_ASSERT(l != NULL);
 
     list_add(l, (void*)0);
-    TEST_CHECK(l->size == 1);
+    TEST_CHECK(list_size(l) == 1);
     TEST_CHECK(l->head->value == (void*)0);
     TEST_CHECK(l->tail->value == (void*)0);
     TEST_CHECK(l->head == l->tail);
@@ -64,7 +64,7 @@ void test_add_and_get(void)
     size_t i; for (i = 1; i < 10000; i++)
     {
         list_add(l, (void*)i);
-        TEST_CHECK(l->size == i+1);
+        TEST_CHECK(list_size(l) == i+1);
         TEST_CHECK(l->head->value == (void*)0);
         TEST_CHECK(l->tail->value == (void*)i);
         TEST_CHECK(l->head != l->tail);
@@ -86,18 +86,18 @@ void test_simple_pop(void)
     for (; i >= 1; i--)
         list_add(l, (void*)i);
     
-    TEST_CHECK(l->size == 100);
+    TEST_CHECK(list_size(l) == 100);
     TEST_CHECK(l->tail->value == (void*)1);
     for (i = 1; i <= 99; i++)
     {
         size_t value = (size_t)list_pop(l);
         TEST_CHECK_(value == i, "expected: %lu got: %lu\n",
                     i, value);
-        TEST_CHECK(l->size == 100 - i);
+        TEST_CHECK(list_size(l) == 100 - i);
         TEST_CHECK(l->tail->value == (void*)i+1);
     }
     TEST_CHECK((size_t)list_pop(l) == 100);
-    TEST_CHECK(l->size == 0);
+    TEST_CHECK(list_size(l) == 0);
     TEST_CHECK(l->head == NULL);
     TEST_CHECK(l->tail == NULL);
     free_list(l);
@@ -114,7 +114,7 @@ void test_simple_remove(void)
         //CHECK_ERROR_STATUS;
     }
     
-    TEST_CHECK(l->size == 101);
+    TEST_CHECK(list_size(l) == 101);
     TEST_CHECK(l->tail->value == (void*)100);
     TEST_CHECK(list_get(l, 0) == (void*)0);
     TEST_CHECK(list_get(l, 50) == (void*)50);
@@ -125,7 +125,7 @@ void test_simple_remove(void)
         size_t value = (size_t)list_get(l, 50);
         TEST_CHECK_(value == 50+i, "expected: %lu got: %lu\n",
                     50+i, value);
-        TEST_CHECK(l->size == 101 - i);
+        TEST_CHECK(list_size(l) == 101 - i);
     }
     free_list(l);
 }
@@ -154,7 +154,7 @@ void test_large_add(void)
         list_add(l, (void*)i);
         TEST_ASSERT(!ERROR_STATUS);
     }
-    TEST_CHECK(l->size == 1000000);
+    TEST_CHECK(list_size(l) == 1000000);
     TEST_CHECK(l->jt_size >= 1000);
     TEST_CHECK(l->jump_table[999]->value == (void*)999000);
     free_list(l);
@@ -167,7 +167,7 @@ void test_pop_effect_on_jt(void)
     size_t i = 0, j = 0;
     for (; i <= 10000; i++)
         list_add(l, (void*)i);
-    TEST_CHECK(l->size == 10001);
+    TEST_CHECK(list_size(l) == 10001);
     for (i = 0; i < 11; i++)
         TEST_CHECK_(l->jump_table[i]->value == (void*)(i * 1000),
                     "expected: %lu got: %lu\n",
@@ -184,10 +184,10 @@ void test_pop_effect_on_jt(void)
     for (i = 0; i < 1000; i++)
         list_pop(l);
     TEST_CHECK(l->jump_table[1] == NULL);
-    TEST_CHECK(l->size == 1);
+    TEST_CHECK(list_size(l) == 1);
     list_pop(l);
     TEST_CHECK(l->jump_table[0] == NULL);\
-    TEST_CHECK(l->size == 0);
+    TEST_CHECK(list_size(l) == 0);
     TEST_CHECK(l->head == NULL);
     TEST_CHECK(l->tail == NULL);
     free_list(l);
@@ -200,7 +200,7 @@ void test_remove_effect_on_jt(void)
     size_t i = 0;
     for (; i <= 10000; i++)
         list_add(l, (void*)i);
-    TEST_CHECK(l->size == 10001);
+    TEST_CHECK(list_size(l) == 10001);
 
     //remove in the middle.  
     TEST_CHECK(l->jump_table[10] != NULL);
@@ -249,8 +249,8 @@ void test_remove_effect_on_jt(void)
     TEST_CHECK(l->jump_table[8] != NULL);
     for (i = 0; i < 1000; i++)
     {
-        list_remove(l, l->size-1);
-        TEST_CHECK(list_get(l, l->size-1) == (void*)(10000 - i - 1));
+        list_remove(l, list_size(l)-1);
+        TEST_CHECK(list_get(l, list_size(l)-1) == (void*)(10000 - i - 1));
         TEST_CHECK(l->tail->value == (void*)10000 - i - 1);
     }
     TEST_CHECK(l->jump_table[8] == NULL);
@@ -258,8 +258,8 @@ void test_remove_effect_on_jt(void)
     //remove rest.  
     //we've removed 1000, 3 times so remove 7001 more.  
     for (i = 0; i <= 7000; i++)
-        list_remove(l, l->size-1);
-    TEST_CHECK(l->size == 0);
+        list_remove(l, list_size(l)-1);
+    TEST_CHECK(list_size(l) == 0);
     TEST_CHECK(l->head == NULL);
     TEST_CHECK(l->tail == NULL);
     for (i = 0; i <= 10; i++)
@@ -290,7 +290,7 @@ void test_random_remove_get(void)
                     expected_value,
                     new_value);
     }
-    TEST_CHECK(l->size == 1);
+    TEST_CHECK(list_size(l) == 1);
     TEST_CHECK(l->head != NULL);
     TEST_CHECK(l->tail == l->head);
     TEST_CHECK(l->jump_table[0] == l->head);
@@ -299,7 +299,7 @@ void test_random_remove_get(void)
 
     //Remove final node.  
     list_remove(l, 0);
-    TEST_CHECK(l->size == 0);
+    TEST_CHECK(list_size(l) == 0);
     TEST_CHECK(l->head == NULL);
     TEST_CHECK(l->tail == NULL);
     TEST_CHECK(l->jump_table[0] == NULL);
@@ -315,8 +315,8 @@ void test_sorting(void)
     for (; i >= 0; i--)
     {
         list_add(l, (void*)i);
-        TEST_CHECK_(l->size == 10000 - i, "expected: %lu got:%lu\n",
-                    l->size, 10000 - i);
+        TEST_CHECK_(list_size(l) == 10000 - i, "expected: %lu got:%lu\n",
+                    list_size(l), 10000 - i);
         TEST_CHECK_(l->head->value == (void*)i,
                     "expected: %lu got: %lu\n", i, (size_t)l->head->value);
         TEST_CHECK(l->tail->value == (void*)9999);
