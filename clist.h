@@ -20,8 +20,8 @@
 
 enum Constants
 {
-    _JUMP_TABLE_INCREMENT = (int)1000,
-    _INITIAL_JUMP_TABLE_SIZE = (unsigned)10
+    JT_INCREMENT = (int)1000,
+    INITIAL_JT_SIZE = (unsigned)10
 };
 
 #ifndef LIST_DATA_TYPE
@@ -43,9 +43,9 @@ int _default_less_than(LIST_DATA_TYPE a, LIST_DATA_TYPE b) { return a < b; }
 /*
 Default error handling callback function, if one is not defined.  
 Attempts to print an error message to stderr.  
-A user defined hanlder must have the same signature as the below function.  
+A user defined handler must have the same signature as the below function.  
 */
-int default_error_handler(char* func, char* arg, char* msg)
+int _default_error_handler(char* func, char* arg, char* msg)
 {
     fprintf(stderr, "list error:\nin function: %s\nargument(s): %s\n%s",
             func, arg, msg);
@@ -53,7 +53,7 @@ int default_error_handler(char* func, char* arg, char* msg)
 }
 
 #ifndef ERROR_HANDLER
-#define ERROR_HANDLER default_error_handler
+#define ERROR_HANDLER _default_error_handler
 #endif
 
 typedef struct _list_node
@@ -63,14 +63,16 @@ typedef struct _list_node
     struct _list_node* prev;
 } _ListNode;
 
+/*
+Linked list structure. Do not modify internal contents.  
+*/
 typedef struct list
 {
     unsigned long size;
-
-    _ListNode* _head;
-    _ListNode* _tail;
-    _ListNode** _jump_table;
-    unsigned long _jump_table_size;
+    _ListNode*    head;
+    _ListNode*    tail;
+    _ListNode**   jump_table;
+    unsigned long jt_size;
 } List;
 
 _ListNode* new_list_node(LIST_DATA_TYPE value)
@@ -84,12 +86,13 @@ typedef unsigned long list_index_t;
 typedef int (*filter_function) (LIST_DATA_TYPE);
 
 //API functions
-List* new_list(void);
-void  free_list(List*);
-void  list_add(List*, LIST_DATA_TYPE);
-void  list_remove(List*, list_index_t);
-void  list_insert(List*, list_index_t);
-void  sort_list(List* l);
+List*          new_list(void);
+void           free_list(List*);
+void           list_add(List*, LIST_DATA_TYPE);
+void           list_remove(List*, list_index_t);
+void           list_insert(List*, list_index_t);
+void           sort_list(List* l);
+list_index_t   list_size(List*);
 LIST_DATA_TYPE list_pop(List*);
 LIST_DATA_TYPE list_get(List*, list_index_t);
 
@@ -98,7 +101,6 @@ _ListNode* _list_pointer_at(List*, list_index_t);
 void _free_list_node(_ListNode*);
 void _list_add_jump_table_node(List*, _ListNode*);
 void _list_remove(List*, _ListNode*, list_index_t);
-void _list_adjust_jump_table(_ListNode*, List*, list_index_t);
 void _list_adjust_jump_table_up(List*, list_index_t);
 void _list_adjust_jump_table_down(List*, list_index_t);
 void _merge_sort_list(List*, _ListNode*);
@@ -117,14 +119,14 @@ new_list(void)
     if (!l) return NULL;
 
     //Allocate jump table.  
-    l->_jump_table = (_ListNode**)\
-    calloc(_INITIAL_JUMP_TABLE_SIZE, sizeof(_ListNode*));
-    if (!l->_jump_table)
+    l->jump_table = (_ListNode**)\
+    calloc(INITIAL_JT_SIZE, sizeof(_ListNode*));
+    if (!l->jump_table)
     {
         free(l);
         return NULL;
     }
-    l->_jump_table_size = _INITIAL_JUMP_TABLE_SIZE;
+    l->jt_size = INITIAL_JT_SIZE;
 
     return l;
 }
@@ -135,9 +137,9 @@ Frees memory associated with the given list.
 void
 free_list(List* l)
 {
-    _ListNode* current = l->_head;
+    _ListNode* current = l->head;
     list_index_t i;
-    for (i = 0; i < l->size; i++) 
+    for (i = 0; i < list_size(l); i++) 
     {
         #if FREE_LIST_ITEMS
         free(current->value)
@@ -148,17 +150,24 @@ free_list(List* l)
         current = next;
     }
 
-    free(l->_jump_table);
-    l->_jump_table = NULL;
-    l->_head = NULL;
-    l->_tail = NULL;
+    free(l->jump_table);
+    l->jump_table = NULL;
+    l->head = NULL;
+    l->tail = NULL;
     free(l);
+}
+
+list_index_t
+list_size(List* l)
+{
+    return l->size;
 }
 
 /*
 Frees memory associated with the given _ListNode*.  
 */
-void _free_list_node(_ListNode* le)
+void
+_free_list_node(_ListNode* le)
 {
     le->next = NULL;
     le->prev = NULL;
@@ -183,16 +192,16 @@ if the index is valid.  Otherwise, calls ERROR_HANDLER and returns NULL.
 _ListNode*
 _list_pointer_at(List* l, list_index_t index)
 {
-    //Start at the closest multiple of _JUMP_TABLE_INCREMENT,
+    //Start at the closest multiple of JT_INCREMENT,
     //then iterate to reach the desired index.
-    if (index < l->size) 
+    if (index < list_size(l)) 
     {
-        if (index == l->size - 1)
-            return l->_tail;
+        if (index == list_size(l) - 1)
+            return l->tail;
 
-        list_index_t jump_location = index / _JUMP_TABLE_INCREMENT;
-        _ListNode* start = l->_jump_table[jump_location];
-        list_index_t distance_to_destination = index % _JUMP_TABLE_INCREMENT;
+        list_index_t jump_location = index / JT_INCREMENT;
+        _ListNode* start = l->jump_table[jump_location];
+        list_index_t distance_to_destination = index % JT_INCREMENT;
 
         _ListNode* destination = start;
         list_index_t i;
@@ -219,30 +228,30 @@ void
 list_add(List* l, LIST_DATA_TYPE value)
 {
     _ListNode* le = new_list_node(value);
-    if (l->size == 0)
-        l->_head = le;
+    if (list_size(l) == 0)
+        l->head = le;
     else
     {
-        l->_tail->next = le;
-        le->prev = l->_tail;
+        l->tail->next = le;
+        le->prev = l->tail;
     }
-    l->_tail = le;
+    l->tail = le;
 
     ++l->size;
-    _list_add_jump_table_node(l, l->_tail);
+    _list_add_jump_table_node(l, l->tail);
 }
 
 /*
-Set _jump_table node if there have been _JUMP_TABLE_INCREMENT additions
+Set _jump_table node if there have been JT_INCREMENT additions
 since the last jump table node (or this is the first node).  
 */
 void
 _list_add_jump_table_node(List* l, _ListNode* jte)
 {
-    if ((l->size - 1) / _JUMP_TABLE_INCREMENT > (l->_jump_table_size - 1))
+    if ((list_size(l) - 1) / JT_INCREMENT > (l->jt_size - 1))
     {
         //_ListNode** new_table = (_ListNode**)\
-        realloc(l->_jump_table, (l->_jump_table_size * 2));
+        realloc(l->jump_table, (l->jt_size * 2));
         /*for whatever reason the above method of reallocating memory will
           result in _jump_table memory being overwritten (consistently on
           the 12th node in the _jump_table) which eventually cuases a
@@ -250,7 +259,7 @@ _list_add_jump_table_node(List* l, _ListNode* jte)
           is happening here, it seems like realloc call is failing but it
           is not returning a NULL pointer like it is supposed to. */
         _ListNode** new_table =\
-        (_ListNode**)calloc(sizeof(_ListNode*), l->_jump_table_size * 2);
+        (_ListNode**)calloc(sizeof(_ListNode*), l->jt_size * 2);
 
         if (!new_table)
         {
@@ -260,15 +269,14 @@ _list_add_jump_table_node(List* l, _ListNode* jte)
         }
         else
         {
-            memcpy(new_table, l->_jump_table,
-                   (l->_jump_table_size) * sizeof(_ListNode*));
-            free(l->_jump_table);
-            l->_jump_table = new_table;
-            l->_jump_table_size *= 2;
+            memcpy(new_table, l->jump_table, l->jt_size * sizeof(_ListNode*));
+            free(l->jump_table);
+            l->jump_table = new_table;
+            l->jt_size *= 2;
         }
     }
-    if ((l->size - 1) % _JUMP_TABLE_INCREMENT == 0)
-        l->_jump_table[(l->size - 1) / _JUMP_TABLE_INCREMENT] = jte;
+    if ((list_size(l) - 1) % JT_INCREMENT == 0)
+        l->jump_table[(list_size(l) - 1) / JT_INCREMENT] = jte;
 }
 
 /*
@@ -277,30 +285,29 @@ Removes the last node from the list and returns its value.
 LIST_DATA_TYPE
 list_pop(List* l)
 {
-    if (l->size < 1)
+    if (list_size(l) < 1)
     {
         ERROR_HANDLER("list_pop()", "NA", "List contains no items!");
         return (LIST_DATA_TYPE)NULL;
     }
     else
     {
-        LIST_DATA_TYPE value = l->_tail->value;
-        struct _list_node* former_tail = l->_tail;
+        LIST_DATA_TYPE value = l->tail->value;
+        struct _list_node* former_tail = l->tail;
 
-        if (l->size == 1)
+        if (list_size(l) == 1)
         {
-            l->_head = NULL;
-            l->_tail = NULL;
+            l->head = NULL;
+            l->tail = NULL;
         }
         else
         {
-            l->_tail = l->_tail->prev;
-            l->_tail->next = NULL;
+            l->tail = l->tail->prev;
+            l->tail->next = NULL;
         }
 
-        //_list_adjust_jump_table_up(l, l->size); //does the same as below - but seems a little hacky.
-        if ((l->size - 1) % _JUMP_TABLE_INCREMENT == 0)
-            l->_jump_table[(l->size - 1) / _JUMP_TABLE_INCREMENT] = NULL;
+        if ((list_size(l) - 1) % JT_INCREMENT == 0)
+            l->jump_table[(list_size(l) - 1) / JT_INCREMENT] = NULL;
 
         --l->size;
         _free_list_node(former_tail);
@@ -317,7 +324,7 @@ list_remove(List* l, list_index_t index)
 void
 _list_remove(List* l, _ListNode* le, list_index_t index)
 {
-    if (index >= l->size)
+    if (index >= list_size(l))
     {
         char arg_as_string[20];
         sprintf(arg_as_string, "(%ld)", index);
@@ -325,15 +332,15 @@ _list_remove(List* l, _ListNode* le, list_index_t index)
     }
     else
     {
-        if (le == l->_tail) 
+        if (le == l->tail) 
         {
             list_pop(l);
             return;
         }
-        else if (le == l->_head) //l->_head != l->_tail
+        else if (le == l->head) //l->head != l->tail
         {
-            l->_head = l->_head->next;
-            l->_head->prev = NULL;
+            l->head = l->head->next;
+            l->head->prev = NULL;
         }
         else 
         {
@@ -350,43 +357,43 @@ void
 _list_adjust_jump_table_up(List* l, list_index_t index)
 {
     //Affected _jump_table entries starting index.  
-    list_index_t i = index / _JUMP_TABLE_INCREMENT;
-    list_index_t largest_jt_index = (l->size - 1) / _JUMP_TABLE_INCREMENT;
+    list_index_t i = index / JT_INCREMENT;
+    list_index_t largest_jt_index = (list_size(l) - 1) / JT_INCREMENT;
 
     for (; i < (largest_jt_index); i++)
     {
         //only advance ptr if index really does come before the jt node.  
-        //for case exapmle: l->size == 10001 and index == 9001,
+        //for case exapmle: list_size(l) == 10001 and index == 9001,
         //dont advance l->jump_table[9]
         if (index <= (i*1000))
-            l->_jump_table[i] = l->_jump_table[i]->next;
+            l->jump_table[i] = l->jump_table[i]->next;
     }
 
     //handle final jump_table node if necessary.  
-    if ((l->size - 1) % _JUMP_TABLE_INCREMENT == 0) //largest_jt_index * 1000 == l->size - 1
+    if ((list_size(l) - 1) % JT_INCREMENT == 0) //largest_jt_index * 1000 == list_size(l) - 1
         //in the case of a remove:
         //if the last element in the list ends on an index location,
         //repace it with NULL because an element is being removed.
-        l->_jump_table[largest_jt_index] = NULL;
+        l->jump_table[largest_jt_index] = NULL;
     else if (index <= largest_jt_index * 1000)
-        l->_jump_table[largest_jt_index] =\
-        l->_jump_table[largest_jt_index]->next;
+        l->jump_table[largest_jt_index] =\
+        l->jump_table[largest_jt_index]->next;
 }
 
 void
 _list_adjust_jump_table_down(List* l, list_index_t index)
 {
     //Affected _jump_table entries starting index.  
-    list_index_t i = index / _JUMP_TABLE_INCREMENT;
-    list_index_t largest_jt_index = l->size / _JUMP_TABLE_INCREMENT;
+    list_index_t i = index / JT_INCREMENT;
+    list_index_t largest_jt_index = list_size(l) / JT_INCREMENT;
 
     for (; i < (largest_jt_index-1); i++)
-        l->_jump_table[i] = l->_jump_table[i]->prev;
+        l->jump_table[i] = l->jump_table[i]->prev;
 
-    if (l->size + 1 % _JUMP_TABLE_INCREMENT)
+    if (list_size(l) + 1 % JT_INCREMENT)
         //In the case of an insert:
         //The last element is being pushed into a _jump_table node position.  
-        _list_add_jump_table_node(l, l->_tail);
+        _list_add_jump_table_node(l, l->tail);
 }
 
 /*
@@ -395,8 +402,8 @@ Preforms a mergesort on the given list without requiring O(n) extra memory.
 void
 sort_list(List* l)
 {
-    if (l->size == 0) return;
-    _merge_sort_list(l, l->_head);
+    if (list_size(l) == 0) return;
+    _merge_sort_list(l, l->head);
 }
 
 void
