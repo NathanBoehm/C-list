@@ -306,6 +306,10 @@ void test_random_remove_get(void)
     free_list(l);
 }
 
+void test_basic_insert(void)
+{
+    
+}
 
 /*
 void test_sorting(void)
