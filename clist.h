@@ -2,7 +2,7 @@
 //
 // clist.h
 // Defines a header only, sortable list structure with 
-// constant element access time and constant add() time.  
+// constant element access time and constant add() time (on average).  
 // API includes standard list operations, get(), insert(), remove(), add(),
 // pop(), etc.  
 //
@@ -26,6 +26,10 @@ enum Constants
 
 #ifndef LIST_DATA_TYPE
 #define LIST_DATA_TYPE void*
+#endif
+
+#ifndef ERROR_RETURN_VALUE
+#define ERROR_RETURN_VALUE NULL
 #endif
 
 /*
@@ -89,10 +93,10 @@ typedef int (*filter_function) (LIST_DATA_TYPE);
 List*          new_list(void);
 void           free_list(List*);
 void           list_add(List*, LIST_DATA_TYPE);
-void           list_remove(List*, list_index_t);
-void           list_insert(List*, list_index_t);
+void           list_insert(List*, list_index_t, LIST_DATA_TYPE);
 void           sort_list(List* l);
 list_index_t   list_size(List*);
+LIST_DATA_TYPE list_remove(List*, list_index_t);
 LIST_DATA_TYPE list_pop(List*);
 LIST_DATA_TYPE list_get(List*, list_index_t);
 
@@ -100,10 +104,10 @@ LIST_DATA_TYPE list_get(List*, list_index_t);
 _ListNode*     _list_pointer_at(List*, list_index_t);
 void           _free_list_node(_ListNode*);
 void           _list_add_jump_table_node(List*, _ListNode*);
-void           _list_remove(List*, _ListNode*, list_index_t);
 void           _list_adjust_jump_table_up(List*, list_index_t);
 void           _list_adjust_jump_table_down(List*, list_index_t);
 void           _merge_sort_list(List*, _ListNode*);
+LIST_DATA_TYPE _list_remove(List*, _ListNode*, list_index_t);
 LIST_DATA_TYPE _list_pop(List*);
 
 
@@ -131,6 +135,7 @@ new_list(void)
     return l;
 }
 
+
 /*
 Frees memory associated with the given list.  
 */
@@ -157,14 +162,16 @@ free_list(List* l)
     free(l);
 }
 
+
 list_index_t
 list_size(List* l)
 {
     return l->size;
 }
 
+
 /*
-Frees memory associated with the given _ListNode*.  
+Internal fucntion that frees memory associated with the given _ListNode*.  
 */
 void
 _free_list_node(_ListNode* le)
@@ -173,6 +180,7 @@ _free_list_node(_ListNode* le)
     le->prev = NULL;
     free(le);
 }
+
 
 /*
 Returns the value at the given index, if the index is valid.  
@@ -188,9 +196,10 @@ list_get(List* l, list_index_t index)
         char arg_as_string[20];
         sprintf(arg_as_string, "(%ld)", index);
         ERROR_HANDLER("list_at()", arg_as_string, "Index out of range!\n");
-        return (LIST_DATA_TYPE)NULL;
+        return ERROR_RETURN_VALUE;
     }
 }
+
 
 /*
 Internal function that returns a struct _list_node* at the given index,
@@ -214,6 +223,7 @@ _list_pointer_at(List* l, list_index_t index)
     return destination;
 }
 
+
 /*
 Adds the given value to the given list.  
 Calls ERROR_HANDLER if there is a memory allocation error,
@@ -235,6 +245,7 @@ list_add(List* l, LIST_DATA_TYPE value)
     ++l->size;
     _list_add_jump_table_node(l, l->tail);
 }
+
 
 /*
 Set _jump_table node if there have been JT_INCREMENT additions
@@ -274,6 +285,7 @@ _list_add_jump_table_node(List* l, _ListNode* jte)
         l->jump_table[(list_size(l) - 1) / JT_INCREMENT] = jte;
 }
 
+
 /*
 Removes the last node from the list and returns its value.  
 If the list has no items to pop, calls ERROR_HANDLER.  
@@ -284,11 +296,12 @@ list_pop(List* l)
     if (list_size(l) < 1)
     {
         ERROR_HANDLER("list_pop()", "NA", "List contains no items!\n");
-        return (LIST_DATA_TYPE)NULL;
+        return ERROR_RETURN_VALUE;
     }
     else
         return _list_pop(l);
 }
+
 
 /*
 Internal function that removes that last node of the given list.  
@@ -318,11 +331,12 @@ _list_pop(List* l)
     return value;
 }
 
+
 /*
 Removes the list entry at the given index, if the inedx is valid.  
 Otherwise calls ERROR_HANDLER.  
 */
-void
+LIST_DATA_TYPE
 list_remove(List* l, list_index_t index)
 {
     if (index >= list_size(l))
@@ -332,38 +346,41 @@ list_remove(List* l, list_index_t index)
         ERROR_HANDLER("list_remove()",
                       arg_as_string,
                       "Index out of bounds!\n");
+        return ERROR_RETURN_VALUE;
     }
     else
-        _list_remove(l, _list_pointer_at(l, index), index);
+        return _list_remove(l, _list_pointer_at(l, index), index);
 }
+
 
 /*
 Internal function that adjusts the given list's internal data to
 remove the given node and free the node.  
 */
-void
+LIST_DATA_TYPE
 _list_remove(List* l, _ListNode* le, list_index_t index)
 {
     if (le == l->tail)
-    {
-        list_pop(l);
-        return;
-    }
+        return _list_pop(l);
     else if (le == l->head) //l->head != l->tail
     {
         l->head = l->head->next;
         l->head->prev = NULL;
     }
-    else 
+    else
     {
         le->prev->next = le->next;
         le->next->prev = le->prev;
     }
+    LIST_DATA_TYPE value = le->value;
 
     _list_adjust_jump_table_up(l, index);
     _free_list_node(le);
     --l->size;
+
+    return value;
 }
+
 
 /*
 Internal function that advances every jump table node, after the given index,
@@ -395,6 +412,7 @@ _list_adjust_jump_table_up(List* l, list_index_t index)
         l->jump_table[largest_jt_index]->next;
 }
 
+
 /*
 Internal function that deadvances every jump table node, after the given index,
 to it's ->next.  For use when removing a node.  
@@ -415,6 +433,7 @@ _list_adjust_jump_table_down(List* l, list_index_t index)
         _list_add_jump_table_node(l, l->tail);
 }
 
+
 /*
 Sorts the given list.  
 */
@@ -424,6 +443,7 @@ sort_list(List* l)
     if (list_size(l) == 0) return;
     _merge_sort_list(l, l->head);
 }
+
 
 /*
 Internal function that preforms a space optimized mergesort on the given list.  
