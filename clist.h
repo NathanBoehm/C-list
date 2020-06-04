@@ -32,12 +32,12 @@ enum Constants
 #define ERROR_RETURN_VALUE NULL
 #endif
 
+#ifndef LEFT_BEFORE_RIGHT
 /*
 Default sorting function, items are sorted smallest first. If a < b, then
 it will come earlier in the list.  
 */
 int _default_less_than(LIST_DATA_TYPE a, LIST_DATA_TYPE b) { return a < b; }
-#ifndef LEFT_BEFORE_RIGTH
 #define LEFT_BEFORE_RIGHT _default_less_than
 #endif
 
@@ -46,6 +46,7 @@ int _default_less_than(LIST_DATA_TYPE a, LIST_DATA_TYPE b) { return a < b; }
 #define FREE_LIST_ITEMS 0
 #endif
 
+#ifndef ERROR_HANDLER
 /*
 Default error handling callback function, if one is not defined.  
 Attempts to print an error message to stderr.  
@@ -57,7 +58,6 @@ int _default_error_handler(char* func, char* arg, char* msg)
             func, arg, msg);
     return -1;
 }
-#ifndef ERROR_HANDLER
 #define ERROR_HANDLER _default_error_handler
 #endif
 
