@@ -61,4 +61,5 @@ void custom_list_free(List* parent_list)
         _free_list_node(old_node);
     }
     free(parent_list->jump_table);
+    free(parent_list);
 }
