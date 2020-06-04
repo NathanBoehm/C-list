@@ -56,7 +56,24 @@ void test_basic1(void)
     custom_list_free(l);
 }
 
+void test_free_nested_lists(void)
+{
+    //this test is intended for valgrind.  
+    List* parent_list = new_list();
+    List* current_list = parent_list;
+    list_index_t i = 0;
+    for (; i < 1000; i++)
+    {
+        List* next_list = new_list();
+        list_add(current_list, Data_t(next_list, 0));
+        current_list = next_list;
+    }
+
+    custom_list_free(parent_list);
+}
+
 TEST_LIST = {
     {"3 list with 3 ints each", test_basic1},
+    {"(valgrind) free nested lists", test_free_nested_lists},
     {NULL, NULL}
 };
