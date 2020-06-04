@@ -37,7 +37,9 @@ Default sorting function, items are sorted smallest first. If a < b, then
 it will come earlier in the list.  
 */
 int _default_less_than(LIST_DATA_TYPE a, LIST_DATA_TYPE b) { return a < b; }
+#ifndef LEFT_BEFORE_RIGTH
 #define LEFT_BEFORE_RIGHT _default_less_than
+#endif
 
 //convience option to have list items freed with the list.  
 #ifndef FREE_LIST_ITEMS
@@ -55,67 +57,152 @@ int _default_error_handler(char* func, char* arg, char* msg)
             func, arg, msg);
     return -1;
 }
-
 #ifndef ERROR_HANDLER
 #define ERROR_HANDLER _default_error_handler
 #endif
 
-typedef struct _list_node
+//List node structure.  
+typedef struct _list_node _ListNode;
+//Linked list structure. Do not modify internal contents.  
+typedef struct list List;
+//List indexing type.  
+typedef unsigned long list_index_t;
+//Filter function signature.  
+typedef int (*filter_function) (LIST_DATA_TYPE);
+
+//API functions
+/*
+Returns a newly allocated list on success or NULL if memory allocation failed.  
+User must free with free_list if the value returned is not NULL.  
+Does not call the ERROR_HANDLER function.  
+*/
+List*          new_list(void);
+
+/*
+Frees memory associated with the given list.  
+*/
+void           free_list(List*);
+
+/*
+Adds the given value to the given list.  
+Calls ERROR_HANDLER if there is a memory allocation error,
+User must free the current list on a memory allocation error.  
+*/
+void           list_add(List*, LIST_DATA_TYPE);
+
+/*
+Inserts the given value at the specified position in the list.  
+*/
+void           list_insert(List*, list_index_t, LIST_DATA_TYPE);
+
+/*
+Sorts the given list.  
+*/
+void           sort_list(List* l);
+
+/*
+Returns the number of elements in the given list.  
+*/
+list_index_t   list_size(List*);
+
+/*
+Removes the list entry at the given index and returns its value,
+if the inedx is valid.  Otherwise calls ERROR_HANDLER and returns
+ERROR_RETURN_VALUE.  
+*/
+LIST_DATA_TYPE list_remove(List*, list_index_t);
+
+/*
+Removes the last node from the list and returns its value.  
+If the list has no items to pop, calls ERROR_HANDLER and returns
+ERROR_RETURN_VALUE.  
+*/
+LIST_DATA_TYPE list_pop(List*);
+
+/*
+Returns the value at the given index, if the index is valid.  
+Otherwise, calls ERROR_HANDLER and returns ERROR_RETURN_VALUE.  
+*/
+LIST_DATA_TYPE list_get(List*, list_index_t);
+
+
+
+//Internal functions
+/*
+Internal function that returns a newly allocated _list_node structure.  
+*/
+_ListNode*     _new_list_node(LIST_DATA_TYPE);
+
+/*
+Internal function that returns a struct _list_node* at the given index.
+*/
+_ListNode*     _list_pointer_at(List*, list_index_t);
+
+/*
+Internal fucntion that frees memory associated with the given _ListNode*.  
+*/
+void           _free_list_node(_ListNode*);
+
+/*
+Set _jump_table node if there have been JT_INCREMENT additions
+since the last jump table node (or this is the first node).  
+*/
+void           _list_add_jump_table_node(List*, _ListNode*);
+
+/*
+Internal function that advances every jump table node, after the given index,
+to it's ->prev.  For use when inserting a node.  
+*/
+void           _list_adjust_jump_table_up(List*, list_index_t);
+
+/*
+Internal function that deadvances every jump table node, after the given index,
+to it's ->next.  For use when removing a node.  
+*/
+void           _list_adjust_jump_table_down(List*, list_index_t);
+
+/*
+Internal function that preforms a space optimized mergesort on the given list.  
+Progressively builds a sorted list on current_head.  
+*/
+void           _merge_sort_list(List*, _ListNode*);
+
+/*
+Internal function that adjusts the given list's internal data to
+remove the given node and free the node.  
+*/
+LIST_DATA_TYPE _list_remove(List*, _ListNode*, list_index_t);
+
+/*
+Internal function that removes that last node of the given list.  
+*/
+LIST_DATA_TYPE _list_pop(List*);
+
+
+
+struct _list_node
 {
     LIST_DATA_TYPE value;
     struct _list_node* next;
     struct _list_node* prev;
-} _ListNode;
+};
 
-/*
-Linked list structure. Do not modify internal contents.  
-*/
-typedef struct list
+struct list
 {
     unsigned long size;
     _ListNode*    head;
     _ListNode*    tail;
     _ListNode**   jump_table;
     unsigned long jt_size;
-} List;
+};
 
-_ListNode* new_list_node(LIST_DATA_TYPE value)
+_ListNode* _new_list_node(LIST_DATA_TYPE value)
 {
     _ListNode* new_le = (_ListNode*)calloc(1, sizeof(_ListNode));
     new_le->value = value;
     return new_le;
 }
 
-typedef unsigned long list_index_t;
-typedef int (*filter_function) (LIST_DATA_TYPE);
-
-//API functions
-List*          new_list(void);
-void           free_list(List*);
-void           list_add(List*, LIST_DATA_TYPE);
-void           list_insert(List*, list_index_t, LIST_DATA_TYPE);
-void           sort_list(List* l);
-list_index_t   list_size(List*);
-LIST_DATA_TYPE list_remove(List*, list_index_t);
-LIST_DATA_TYPE list_pop(List*);
-LIST_DATA_TYPE list_get(List*, list_index_t);
-
-//Internal functions
-_ListNode*     _list_pointer_at(List*, list_index_t);
-void           _free_list_node(_ListNode*);
-void           _list_add_jump_table_node(List*, _ListNode*);
-void           _list_adjust_jump_table_up(List*, list_index_t);
-void           _list_adjust_jump_table_down(List*, list_index_t);
-void           _merge_sort_list(List*, _ListNode*);
-LIST_DATA_TYPE _list_remove(List*, _ListNode*, list_index_t);
-LIST_DATA_TYPE _list_pop(List*);
-
-
-/*
-Returns a newly allocated list on success or NULL if memory allocation failed.  
-User must free with free_list if the value returned is not NULL.  
-Does not call the ERROR_HANDLER function.  
-*/
 List*
 new_list(void)
 {
@@ -136,9 +223,6 @@ new_list(void)
 }
 
 
-/*
-Frees memory associated with the given list.  
-*/
 void
 free_list(List* l)
 {
@@ -170,9 +254,6 @@ list_size(List* l)
 }
 
 
-/*
-Internal fucntion that frees memory associated with the given _ListNode*.  
-*/
 void
 _free_list_node(_ListNode* le)
 {
@@ -182,10 +263,6 @@ _free_list_node(_ListNode* le)
 }
 
 
-/*
-Returns the value at the given index, if the index is valid.  
-Otherwise, calls ERROR_HANDLER and returns NULL.  
-*/
 LIST_DATA_TYPE
 list_get(List* l, list_index_t index)
 {
@@ -201,9 +278,6 @@ list_get(List* l, list_index_t index)
 }
 
 
-/*
-Internal function that returns a struct _list_node* at the given index,
-*/
 _ListNode*
 _list_pointer_at(List* l, list_index_t index)
 {
@@ -224,15 +298,10 @@ _list_pointer_at(List* l, list_index_t index)
 }
 
 
-/*
-Adds the given value to the given list.  
-Calls ERROR_HANDLER if there is a memory allocation error,
-User must free list on a memory allocation error in list_add().  
-*/
 void
 list_add(List* l, LIST_DATA_TYPE value)
 {
-    _ListNode* le = new_list_node(value);
+    _ListNode* le = _new_list_node(value);
     if (list_size(l) == 0)
         l->head = le;
     else
@@ -247,10 +316,6 @@ list_add(List* l, LIST_DATA_TYPE value)
 }
 
 
-/*
-Set _jump_table node if there have been JT_INCREMENT additions
-since the last jump table node (or this is the first node).  
-*/
 void
 _list_add_jump_table_node(List* l, _ListNode* jte)
 {
@@ -286,10 +351,6 @@ _list_add_jump_table_node(List* l, _ListNode* jte)
 }
 
 
-/*
-Removes the last node from the list and returns its value.  
-If the list has no items to pop, calls ERROR_HANDLER.  
-*/
 LIST_DATA_TYPE
 list_pop(List* l)
 {
@@ -303,9 +364,6 @@ list_pop(List* l)
 }
 
 
-/*
-Internal function that removes that last node of the given list.  
-*/
 LIST_DATA_TYPE
 _list_pop(List* l)
 {
@@ -332,10 +390,6 @@ _list_pop(List* l)
 }
 
 
-/*
-Removes the list entry at the given index, if the inedx is valid.  
-Otherwise calls ERROR_HANDLER.  
-*/
 LIST_DATA_TYPE
 list_remove(List* l, list_index_t index)
 {
@@ -353,10 +407,6 @@ list_remove(List* l, list_index_t index)
 }
 
 
-/*
-Internal function that adjusts the given list's internal data to
-remove the given node and free the node.  
-*/
 LIST_DATA_TYPE
 _list_remove(List* l, _ListNode* le, list_index_t index)
 {
@@ -382,10 +432,6 @@ _list_remove(List* l, _ListNode* le, list_index_t index)
 }
 
 
-/*
-Internal function that advances every jump table node, after the given index,
-to it's ->prev.  For use when inserting a node.  
-*/
 void
 _list_adjust_jump_table_up(List* l, list_index_t index)
 {
@@ -413,10 +459,6 @@ _list_adjust_jump_table_up(List* l, list_index_t index)
 }
 
 
-/*
-Internal function that deadvances every jump table node, after the given index,
-to it's ->next.  For use when removing a node.  
-*/
 void
 _list_adjust_jump_table_down(List* l, list_index_t index)
 {
@@ -434,9 +476,6 @@ _list_adjust_jump_table_down(List* l, list_index_t index)
 }
 
 
-/*
-Sorts the given list.  
-*/
 void
 sort_list(List* l)
 {
@@ -445,10 +484,6 @@ sort_list(List* l)
 }
 
 
-/*
-Internal function that preforms a space optimized mergesort on the given list.  
-Progressively builds a sorted list on current_head.  
-*/
 void
 _merge_sort_list(List* l, _ListNode* current_head)
 {
