@@ -13,6 +13,17 @@ List* get_list(List* l, list_index_t index)
     return list_get(l, index).l;
 }
 
+void test_large_single_list(void)
+{
+    List* l = new_list();
+    list_index_t i = 0;
+    for (; i < 1000; i++)
+    {
+        list_add(l, Data_t(NULL, i));
+    }
+    custom_list_free(l);
+}
+
 void test_basic1(void)
 {
     List* l = new_list();
@@ -72,7 +83,9 @@ void test_free_nested_lists(void)
     custom_list_free(parent_list);
 }
 
+
 TEST_LIST = {
+    {"(valgrind) test custom free on large single list", test_large_single_list},
     {"3 list with 3 ints each", test_basic1},
     {"(valgrind) free nested lists", test_free_nested_lists},
     {NULL, NULL}

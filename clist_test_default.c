@@ -401,7 +401,42 @@ void test_random_remove_get(void)
 
 void test_basic_insert(void)
 {
+    List* l = new_list();
+    list_add(l, 0);
+    list_add(l, 100);
+
+    size_t i = 99;
+    for (; i > 0; --i)
+        list_insert(l, 1, i);
+
+    //check ordering
+    for (i = 0; i < 101; i++)
+    {
+        long actual = list_get(l, i);
+        TEST_CHECK_(actual == i,
+                    "expected: %lu got: %lu\n",
+                    i,
+                    actual);
+    }
     
+    free_list(l);
+}
+
+void test_insert_adds_jt_nodes(void)
+{
+    List* l = new_list();
+    int i = 9999;
+    for (; i >= 0; i--)
+        list_insert(l, 0, i);
+
+    for (i = 0; i < 10000; i++)
+        TEST_CHECK(list_get(l, i) == i);
+    TEST_CHECK(l->head->value == 0);
+
+    for (i = 0; i < 10; i++)
+        TEST_CHECK(l->jump_table[i]->value == i * 1000);
+
+    free_list(l);
 }
 
 /*
@@ -458,6 +493,8 @@ TEST_LIST = {
     {"pops reorganize jump table", test_pop_effect_on_jt},
     {"removes reorganize jump table", test_remove_effect_on_jt},
     {"Series of random removes and gets", test_random_remove_get},
+    {"Basic insert checks", test_basic_insert},
+    {"Inserts populate jump table", test_insert_adds_jt_nodes},
     //{"List sorting", test_sorting},
     //{"List sorting - random value", test_sorting_random},
     {NULL, NULL}
