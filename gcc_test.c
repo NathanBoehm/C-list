@@ -7,11 +7,13 @@
 int main(int argc, char* argv[])
 {
     List* l = new_list();
-
-    //list_add(l, 3);
-    list_add(l, 2);
-    list_add(l, 1);
-    list_add(l, 0);
+    long i = 3;
+    for (; i >= 0; --i)
+    {
+        list_add(l, i);
+        printf("i: %d\n", i);
+        //TEST_CHECK(l->tail->value == i);
+    }
 
     sort_list(l);
 

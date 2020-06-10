@@ -520,47 +520,158 @@ void test_random_insert_get(void)
     free_list(l);
 }
 
-/*
 void test_sorting(void)
 {
     List* l = new_list();
     long i = 9999;
-    for (; i >= 0; i--)
+    for (; i >= 0; --i)
     {
-        list_add(l, (void*)i);
-        TEST_CHECK_(list_size(l) == 10000 - i, "expected: %lu got:%lu\n",
-                    list_size(l), 10000 - i);
-        TEST_CHECK_(l->head->value == (void*)i,
-                    "expected: %lu got: %lu\n", i, (size_t)l->head->value);
-        TEST_CHECK(l->tail->value == (void*)9999);
-        //no _head->next if there is only one node
-        if (i < 9999) { TEST_CHECK(l->head->next->value == (void*)i+1); }
+        list_add(l, i);
+        TEST_CHECK(l->tail->value == i);
     }
 
-    for (i = 9; i >= 1; i--) {
-        TEST_CHECK_(l->jump_table[i]->value == (void*)(i * 1000),
-                    "expected: %lu got: %lu\n",
-                    (size_t)(i * 1000),
-                    (size_t)l->jump_table[i]->value);
+    //check initial jump_table values.  
+    for (i = 0; i < 10; ++i)
+        TEST_CHECK(l->jump_table[i]->value == ((10 - i) * 1000) - 1);
+
+    sort_list(l);
+
+    _ListNode* current = l->head->next;
+    TEST_CHECK(l->head->value == 0);
+    while (current != NULL)
+    {
+        TEST_CHECK(current->prev->value == current->value - 1);
+        current = current->next;
     }
+
+    //Check new jump_table values.  
+    for (i = 0; i < 10; ++i)
+        TEST_CHECK(l->jump_table[i]->value == i * 1000);
+
     free_list(l);
 }
 
 
-void test_sorting_random(void)
+void test_sort_emtpy_and_single(void)
+{
+    List* l = new_list();
+    sort_list(l);
+    list_add(l, 0);
+    sort_list(l);
+    TEST_CHECK(l->size == 1);
+    TEST_CHECK(l->head->value == 0);
+    TEST_CHECK(l->jump_table[0]->value == 0);
+    TEST_CHECK(l->tail->value == 0);
+    TEST_CHECK(list_get(l, 0) == 0);
+
+    free_list(l);
+}
+
+
+void test_sort_random(void)
 {
     List* l = new_list();
     long i = 0;
-    for (; i < 1000; i++) {
-        list_add(l, (void*)(rand() % 100000));
+    for (; i < 1000; i++)
+        list_add(l, rand() % 100000);
+
+    sort_list(l);
+
+    _ListNode* current = l->head->next;
+    while (current != NULL)
+    {
+        TEST_CHECK(current->prev->value <= current->value);
+        current = current->next;
     }
 
-    for (i = 0; i < 999; i++) {
-        TEST_CHECK(list_get(l, i) <= list_get(l, i+1));
+    for (i = 1; i < l->jt_size; ++i)
+    {
+        if (l->jump_table[i] == NULL)
+            break;
+        TEST_CHECK(l->jump_table[i]->value >= l->jump_table[i-1]->value);
     }
+
     free_list(l);
 }
-*/
+
+
+//this will probably take a while.  
+void test_large_sort(void)
+{
+    List* l = new_list();
+
+    long amnt = 1000000;
+    long i = 0;
+    for (; i < amnt; ++i)
+    {
+        int value = rand();
+        list_add(l, value);
+    }
+
+    TEST_CHECK(l->size == amnt);
+    TEST_CHECK(l->jt_size > 1000);
+    long jt_size = l->jt_size;
+    sort_list(l);
+    TEST_CHECK(l->jt_size == jt_size);
+    TEST_CHECK(l->size == amnt);
+
+    _ListNode* current = l->head->next;
+    long size = 0;
+    while (current != NULL)
+    {
+        ++size;
+        TEST_CHECK(current->prev->value <= current->value);
+        current = current->next;
+    }
+    TEST_CHECK(size == amnt-1);
+
+    for (i = 1; i < l->jt_size; ++i)
+    {
+        if (l->jump_table[i] == NULL)
+            break;
+        TEST_CHECK(l->jump_table[i]->value >= l->jump_table[i-1]->value);
+    }
+
+    free_list(l);
+}
+
+void test_get_after_sort(void)
+{
+    List* l = new_list();
+    long i = 10000;
+    for (; i >= 0; --i)
+        list_add(l, i);
+
+    sort_list(l);
+
+    for (i = 0; i < 10000; ++i)
+        TEST_CHECK(list_get(l, i) == i);
+    
+    for (i = 0; i <= 10; ++i)
+        TEST_CHECK(l->jump_table[i]->value == i * 1000);
+
+    free_list(l);
+}
+
+void test_sort_sorted_list(void)
+{
+    List* l = new_list();
+    long i = 0;
+    for (; i < 1000; ++i)
+        list_add(l, i);
+
+    sort_list(l);
+    sort_list(l);
+    sort_list(l);
+
+    for (i = 0; i < 1000; ++i)
+        TEST_CHECK(list_get(l, i) == i);
+    
+    TEST_CHECK(l->jump_table[0]->value == 0);
+
+    free_list(l);
+}
+
 
 TEST_LIST = {
     {"Constant values", test_constants},
@@ -579,7 +690,11 @@ TEST_LIST = {
     {"Inserts expand jump table size", test_insert_expands_jt},
     {"Inserts modify the jump table", test_insert_modifies_jt},
     {"Random inserts and gets", test_random_insert_get},
-    //{"List sorting", test_sorting},
-    //{"List sorting - random value", test_sorting_random},
+    {"List sorting", test_sorting},
+    {"List sorting - empty and single", test_sort_emtpy_and_single},
+    {"List sorting - random value", test_sort_random},
+    {"List sorting - large", test_large_sort},
+    {"List sorting - get after sort", test_get_after_sort},
+    {"List sorting - repeat sorting list", test_sort_sorted_list},
     {NULL, NULL}
 };

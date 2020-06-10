@@ -188,7 +188,7 @@ void           _list_insert(List*, list_index_t, _ListNode*);
 /*
 Internal function that appends a node tot he tail of another
 */
-void           _append(_ListNode*, _ListNode*, _ListNode*);
+void           _append(_ListNode**, _ListNode**, _ListNode*);
 
 
 
@@ -552,6 +552,7 @@ sort_list(List* l)
     {
         if (i % JT_INCREMENT == 0)
             l->jump_table[i / JT_INCREMENT] = current;
+        current = current->next;
         ++i;
     }
     l->tail = current;
@@ -577,7 +578,7 @@ _merge_sort_list(_ListNode* current_head, list_index_t sublist_size)
     {
         ++n_merges;
         list_index_t f_size = 0;
-        while (f_size < sublist_size && second_list->next != NULL)
+        while (f_size < sublist_size && second_list != NULL)
         {
             second_list = second_list->next;
             ++f_size;
@@ -589,53 +590,54 @@ _merge_sort_list(_ListNode* current_head, list_index_t sublist_size)
         {
             if (f_size == 0)
             {
-                _append(new_head, new_tail, second_list);
+                _append(&new_head, &new_tail, second_list);
                 second_list = second_list->next;
                 --s_size;
             }
             else if (s_size == 0 || second_list == NULL)
             {
-                _append(new_head, new_tail, first_list);
+                _append(&new_head, &new_tail, first_list);
                 first_list = first_list->next;
                 --f_size;
             }
             else if (LEFT_BEFORE_RIGHT(second_list->value, first_list->value))
             {
-                _append(new_head, new_tail, second_list);
+                _append(&new_head, &new_tail, second_list);
                 second_list = second_list->next;
                 --s_size;
             }
             else
             {
-                _append(new_head, new_tail, first_list);
+                _append(&new_head, &new_tail, first_list);
                 first_list = first_list->next;
                 --f_size;
             }
         }
+        first_list = second_list;
     }
+    new_tail->next = NULL;
 
     if (n_merges == 1)
         return new_head;
     else
-        _merge_sort_list(new_head, sublist_size*2);
+        return _merge_sort_list(new_head, sublist_size*2);
 }
 
 
 void
-_append(_ListNode* head, _ListNode* tail, _ListNode* next)
+_append(_ListNode** head, _ListNode** tail, _ListNode* next)
 {
-    next->prev = NULL;
-    next->next = NULL;
-    if (tail)
+    if (*tail)
     {
-        tail->next = next;
-        next->prev = tail;
-        tail = tail->next;
+        (*tail)->next = next;
+        next->prev = *tail;
+        *tail = next;
     }
     else
     {
-        head = next;
-        tail = next;
+        next->prev = NULL;
+        *head = next;
+        *tail = next;
     }
 }
 
