@@ -439,6 +439,87 @@ void test_insert_adds_jt_nodes(void)
     free_list(l);
 }
 
+void test_insert_expands_jt(void)
+{
+    List* l = new_list();
+    int i = 20000;
+    for (; i >= 0; --i)
+        list_insert(l, 0, i);
+
+    TEST_CHECK(list_size(l) == 20001);
+    TEST_CHECK(l->jt_size == 40);
+    for (i = 0; i <= 20; i++)
+        TEST_CHECK(l->jump_table[i]->value == i * 1000);
+
+    free_list(l);
+}
+
+void test_insert_modifies_jt(void)
+{
+    List* l = new_list();
+    int i = 0;
+    for (; i < 10000; ++i)
+        list_add(l, i);
+
+    int insert_num = 77777;
+
+    //insert at the end.  
+    TEST_CHECK(l->jt_size == 10);
+    for (i = 0; i < 1000; i++)
+    {
+        list_insert(l, 10000, insert_num + i);
+        TEST_CHECK(list_get(l, 10000) == insert_num + i);
+        TEST_CHECK(l->jump_table[10]->value == insert_num + i);
+    }
+
+    //insert in the middle.  
+    TEST_CHECK(list_get(l, 5000) == 5000);
+    TEST_CHECK(l->jump_table[5]->value == 5000);
+    for (i = 0; i < 1000; ++i)
+    {
+        list_insert(l, 5000, insert_num + i);
+        TEST_CHECK(list_get(l, 5000) == insert_num + i);
+        TEST_CHECK(l->jump_table[5]->value == insert_num + i);
+    }
+    TEST_CHECK(l->jump_table[6]->value == 5000);
+
+    //insert at the begining.  
+    TEST_CHECK(list_get(l, 0) == 0);
+    for (i = 0; i < 1000; ++i)
+    {
+        list_insert(l, 0, insert_num + i);
+        TEST_CHECK(list_get(l, 0) == insert_num + i);
+        TEST_CHECK(l->jump_table[0]->value == insert_num + i);
+    }
+    TEST_CHECK(l->jump_table[1]->value == 0);
+
+    for (i = 1; i < 6; i++)
+        TEST_CHECK(l->jump_table[i]->value == (i-1) * 1000);
+    for (i = 7; i < 12; i++)
+        TEST_CHECK(l->jump_table[i]->value == (i-2) * 1000);
+    TEST_CHECK(l->jump_table[12]->value == insert_num + 999);
+
+    free_list(l);
+}
+
+void test_random_insert_get(void)
+{
+    List* l = new_list();
+    list_add(l, 0);
+    list_add(l, 1);
+
+    int i = 0;
+    for (; i < 10000; ++i)
+    {
+        int index = rand() % (list_size(l)-1);
+        list_insert(l, index, i);
+        TEST_CHECK(list_get(l, index) == i);
+    }
+    TEST_CHECK(list_size(l) == 10002);
+
+    free_list(l);
+}
+
 /*
 void test_sorting(void)
 {
@@ -484,17 +565,20 @@ void test_sorting_random(void)
 TEST_LIST = {
     {"Constant values", test_constants},
     {"New list has correct intial values", test_new_list_intial_values},
-    {"Trying to get an invalid index, is an error", test_get_invalid_index},
+    {"get on invalid index, is an error", test_get_invalid_index},
     {"Basic add and get checks", test_add_and_get},
     {"Basic pop checks", test_simple_pop},
     {"Basic remove checks", test_simple_remove},
-    {"Remove and pop on invalid indicies cause an error", test_remove_pop_error_cases},
+    {"Remove/pop on invalid index is error", test_remove_pop_error_cases},
     {"Large add and effect on jump table", test_large_add},
     {"pops reorganize jump table", test_pop_effect_on_jt},
     {"removes reorganize jump table", test_remove_effect_on_jt},
     {"Series of random removes and gets", test_random_remove_get},
     {"Basic insert checks", test_basic_insert},
     {"Inserts populate jump table", test_insert_adds_jt_nodes},
+    {"Inserts expand jump table size", test_insert_expands_jt},
+    {"Inserts modify the jump table", test_insert_modifies_jt},
+    {"Random inserts and gets", test_random_insert_get},
     //{"List sorting", test_sorting},
     //{"List sorting - random value", test_sorting_random},
     {NULL, NULL}

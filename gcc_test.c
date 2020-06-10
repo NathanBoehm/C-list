@@ -7,20 +7,13 @@
 int main(int argc, char* argv[])
 {
     List* l = new_list();
-    size_t i = 9999;
-    for (; i >= 0; i--)
-        list_insert(l, 0, i);
 
-    printf("after insert\n");
+    //list_add(l, 3);
+    list_add(l, 2);
+    list_add(l, 1);
+    list_add(l, 0);
 
-    for (i = 0; i < 10000; i++)
-    {
-        int a = list_get(l, i);
-    }
-    printf("head value: %d\n", l->head->value);
-
-    for (i = 0; i < 10; i++)
-        printf("jump_table[%d] = %d\n", i, l->jump_table[i]->value);
+    sort_list(l);
 
     free_list(l);
 }

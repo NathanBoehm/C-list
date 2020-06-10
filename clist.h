@@ -166,7 +166,7 @@ void           _list_adjust_jump_table_down(List*, list_index_t);
 Internal function that preforms a space optimized mergesort on the given list.  
 Progressively builds a sorted list on current_head.  
 */
-void           _merge_sort_list(List*, _ListNode*);
+_ListNode*     _merge_sort_list(_ListNode*, list_index_t);
 
 /*
 Internal function that adjusts the given list's internal data to
@@ -184,6 +184,11 @@ Internal function thatInserts the given node
 at the specified location in the list.  
 */
 void           _list_insert(List*, list_index_t, _ListNode*);
+
+/*
+Internal function that appends a node tot he tail of another
+*/
+void           _append(_ListNode*, _ListNode*, _ListNode*);
 
 
 
@@ -308,7 +313,8 @@ list_add(List* l, LIST_DATA_TYPE value)
 }
 
 
-_ListNode* _new_list_node(LIST_DATA_TYPE value)
+_ListNode*
+_new_list_node(LIST_DATA_TYPE value)
 {
     _ListNode* new_le = (_ListNode*)calloc(1, sizeof(_ListNode));
     new_le->value = value;
@@ -492,9 +498,10 @@ _list_remove(List* l, _ListNode* le, list_index_t index)
 }
 
 
-void list_insert(List* l, list_index_t index, LIST_DATA_TYPE value)
+void
+list_insert(List* l, list_index_t index, LIST_DATA_TYPE value)
 {
-    if (index  == l->size)
+    if (index == l->size)
         list_add(l, value);
     else if (index > l->size)
     {
@@ -537,15 +544,100 @@ void
 sort_list(List* l)
 {
     if (list_size(l) == 0) return;
-    _merge_sort_list(l, l->head);
+    l->head = _merge_sort_list(l->head, 1);
+
+    _ListNode* current = l->head;
+    list_index_t i = 0;
+    while(current->next != NULL)
+    {
+        if (i % JT_INCREMENT == 0)
+            l->jump_table[i / JT_INCREMENT] = current;
+        ++i;
+    }
+    l->tail = current;
+    if (i % JT_INCREMENT == 0)
+            l->jump_table[i / JT_INCREMENT] = current;
+}
+
+
+/*
+Space-optimized mergesort based on the algorithm description found here:
+https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html
+*/
+_ListNode*
+_merge_sort_list(_ListNode* current_head, list_index_t sublist_size)
+{
+    _ListNode* new_head = NULL; 
+    _ListNode* new_tail = NULL;
+    _ListNode* first_list = current_head;
+    _ListNode* second_list = current_head;
+    int n_merges = 0;
+
+    while (first_list != NULL)
+    {
+        ++n_merges;
+        list_index_t f_size = 0;
+        while (f_size < sublist_size && second_list->next != NULL)
+        {
+            second_list = second_list->next;
+            ++f_size;
+        }
+        list_index_t s_size = sublist_size;
+
+
+        while(f_size > 0 || (s_size > 0 && second_list != NULL))
+        {
+            if (f_size == 0)
+            {
+                _append(new_head, new_tail, second_list);
+                second_list = second_list->next;
+                --s_size;
+            }
+            else if (s_size == 0 || second_list == NULL)
+            {
+                _append(new_head, new_tail, first_list);
+                first_list = first_list->next;
+                --f_size;
+            }
+            else if (LEFT_BEFORE_RIGHT(second_list->value, first_list->value))
+            {
+                _append(new_head, new_tail, second_list);
+                second_list = second_list->next;
+                --s_size;
+            }
+            else
+            {
+                _append(new_head, new_tail, first_list);
+                first_list = first_list->next;
+                --f_size;
+            }
+        }
+    }
+
+    if (n_merges == 1)
+        return new_head;
+    else
+        _merge_sort_list(new_head, sublist_size*2);
 }
 
 
 void
-_merge_sort_list(List* l, _ListNode* current_head)
+_append(_ListNode* head, _ListNode* tail, _ListNode* next)
 {
-    /***Not Yet Implemented***/
-    //_ListNode* new_head, new_tail;
+    next->prev = NULL;
+    next->next = NULL;
+    if (tail)
+    {
+        tail->next = next;
+        next->prev = tail;
+        tail = tail->next;
+    }
+    else
+    {
+        head = next;
+        tail = next;
+    }
 }
+
 
 #endif
