@@ -45,7 +45,7 @@ void test_new_list_intial_values(void)
     TEST_CHECK(l->jt_size == INITIAL_JT_SIZE);
 
     size_t i = 0;
-    for (; i < INITIAL_JT_SIZE; i++)
+    for (; i < INITIAL_JT_SIZE; ++i)
         TEST_CHECK(l->jump_table[i] == NULL);
 
     free_list(l);
@@ -83,7 +83,7 @@ void test_add_and_get(void)
 
     //Basic add()/get() checks up to intial jump_table size.  
     size_t i = 1;
-    for (; i < 10000; i++)
+    for (; i < 10000; ++i)
     {
         list_add(l, i);
         TEST_CHECK(list_size(l) == i+1);
@@ -99,10 +99,11 @@ void test_add_and_get(void)
     check_error_status(not_in_error); //hopefully none of the adds failed.  
 
     //check jump_table values.  
-    for (i = 9; i > 0; i--)
+    for (i = 9; i > 0; --i)
         //value = index, jump_table entries are assigned every 1000th index.  
         TEST_CHECK(l->jump_table[i]->value == (i * 1000));
 
+    check_error_status(not_in_error);
     free_list(l);
 }
 
@@ -114,13 +115,13 @@ void test_simple_pop(void)
     
     //Add 100 numbers, largest first.  
     size_t i = 100;
-    for (; i >= 1; i--)
+    for (; i >= 1; --i)
         list_add(l, i);
     TEST_CHECK(list_size(l) == 100);
     TEST_CHECK(l->tail->value == 1);
 
     //Basic pop() checks, pop all but last element.  
-    for (i = 1; i <= 99; i++)
+    for (i = 1; i <= 99; ++i)
     {
         size_t value = list_pop(l);
         TEST_CHECK_(value == i, "expected: %lu got: %lu\n",
@@ -146,7 +147,7 @@ void test_simple_remove(void)
     TEST_ASSERT(l != NULL);
 
     size_t i = 0;
-    for (; i <= 100; i++)
+    for (; i <= 100; ++i)
         list_add(l, i);
     TEST_CHECK(list_size(l) == 101);
     TEST_CHECK(l->tail->value == 100);
@@ -154,7 +155,7 @@ void test_simple_remove(void)
     TEST_CHECK(list_get(l, 50) == 50);
 
     //Remove in the middle.  
-    for (i = 1; i < 50; i++)
+    for (i = 1; i < 50; ++i)
     {
         list_remove(l, 50);
         size_t value = list_get(l, 50);
@@ -193,7 +194,7 @@ void test_large_add(void)
     TEST_ASSERT(l != NULL);
 
     size_t i = 0;
-    for (; i < 1000000; i++)
+    for (; i < 1000000; ++i)
         list_add(l, i);
 
     TEST_CHECK(list_size(l) == 1000000);
@@ -212,12 +213,12 @@ void test_pop_effect_on_jt(void)
 
     //Add 10001 numbers.  
     size_t i = 0, j = 0;
-    for (; i <= 10000; i++)
+    for (; i <= 10000; ++i)
         list_add(l, i);
     TEST_CHECK(list_size(l) == 10001);
 
     //Check current values of the jump_table entries.  
-    for (i = 0; i < 11; i++)
+    for (i = 0; i < 11; ++i)
     {
         TEST_CHECK_(l->jump_table[i]->value == (i * 1000),
                     "expected: %lu got: %lu\n",
@@ -225,10 +226,10 @@ void test_pop_effect_on_jt(void)
                     l->jump_table[i]->value);
     }
 
-    for (j = 10; j > 1; j--)
+    for (j = 10; j > 1; --j)
     {
         //Pop 1000 items.  
-        for (i = 0; i < 1000; i++)
+        for (i = 0; i < 1000; ++i)
             list_pop(l);
 
         //jump_table entries every 1000 items, so check last entry is removed.  
@@ -238,7 +239,7 @@ void test_pop_effect_on_jt(void)
         TEST_CHECK(list_get(l, ((j-1)*1000)) == ((j-1)*1000));
     }
 
-    for (i = 0; i < 1000; i++)
+    for (i = 0; i < 1000; ++i)
         list_pop(l);
     TEST_CHECK(l->jump_table[1] == NULL); //2nd to last jt entry rmeoved.  
     TEST_CHECK(list_size(l) == 1);
@@ -261,13 +262,13 @@ void test_remove_effect_on_jt(void)
     TEST_ASSERT(l != NULL);
 
     size_t i = 0;
-    for (; i <= 10000; i++)
+    for (; i <= 10000; ++i)
         list_add(l, i);
     TEST_CHECK(list_size(l) == 10001);
 
     //remove in the middle.  
     TEST_CHECK(l->jump_table[10] != NULL);
-    for (i = 0; i < 1000; i++)
+    for (i = 0; i < 1000; ++i)
     {
         list_remove(l, 5000);
         //Value should advance by 1 for each remove.  
@@ -276,7 +277,7 @@ void test_remove_effect_on_jt(void)
         //every jump_table node after the 5th (removing at index 5000)
         //should be moved to the next node in the list.  
         size_t j = 5;
-        for (; j < 10; j++)
+        for (; j < 10; ++j)
         {
             //The jump_table node value will have started out as j*1000,
             //each remove should cause it to increase by 1.
@@ -291,7 +292,7 @@ void test_remove_effect_on_jt(void)
 
     //remove at the begining.  
     TEST_CHECK(l->jump_table[9] != NULL);
-    for (i = 0; i < 1000; i++)
+    for (i = 0; i < 1000; ++i)
     {
         list_remove(l, 0);
         //Removing the current head should cause the new_head to be the next
@@ -301,7 +302,7 @@ void test_remove_effect_on_jt(void)
 
         //Check first half of jump_table entries.  
         size_t j = 0;
-        for (; j < 4; j++)
+        for (; j < 4; ++j)
         {
             //The jump_table node value will have started out as j*1000,
             //each remove should cause it to increase by 1.
@@ -314,7 +315,7 @@ void test_remove_effect_on_jt(void)
         //Second half should all have values exactly 1000 larger than their
         //index due to previous removes at index 5000 (first remove loop).  
         j = 5;
-        for (; j < 9; j++)
+        for (; j < 9; ++j)
         {
             //The jump_table node value will have started out as j*1000,
             //the first remove loop will have cause each value to be 1000
@@ -330,7 +331,7 @@ void test_remove_effect_on_jt(void)
 
     //Remove at end.  
     TEST_CHECK(l->jump_table[8] != NULL);
-    for (i = 0; i < 1000; i++)
+    for (i = 0; i < 1000; ++i)
     {
         list_remove(l, list_size(l)-1);
         TEST_CHECK(list_get(l, list_size(l)-1) == (10000 - i - 1));
@@ -341,12 +342,12 @@ void test_remove_effect_on_jt(void)
 
     //Remove remaining nodes.   
     //we've removed 1000, 3 times so remove 7001 more.  
-    for (i = 0; i <= 7000; i++)
+    for (i = 0; i <= 7000; ++i)
         list_remove(l, 0);
     TEST_CHECK(list_size(l) == 0);
     TEST_CHECK(l->head == NULL);
     TEST_CHECK(l->tail == NULL);
-    for (i = 0; i <= 10; i++)
+    for (i = 0; i <= 10; ++i)
         TEST_CHECK(l->jump_table[i] == NULL);
 
     check_error_status(not_in_error);
@@ -360,10 +361,10 @@ void test_random_remove_get(void)
     TEST_ASSERT(l != NULL);
 
     size_t i = 0;
-    for (; i <= 10000; i++)
+    for (; i <= 10000; ++i)
         list_add(l, i);
 
-    for (i = 0; i < 10000; i++)
+    for (i = 0; i < 10000; ++i)
     {
         //Check that after a remove the same index will
         //have the value of the ->next of the previous node.  
@@ -384,7 +385,7 @@ void test_random_remove_get(void)
     TEST_CHECK(l->head != NULL);
     TEST_CHECK(l->tail == l->head);
     TEST_CHECK(l->jump_table[0] == l->head);
-    for (i = 1; i <= 10; i++)
+    for (i = 1; i <= 10; ++i)
         TEST_CHECK(l->jump_table[i] == NULL);
 
     //Remove final node.  
@@ -410,7 +411,7 @@ void test_basic_insert(void)
         list_insert(l, 1, i);
 
     //check ordering
-    for (i = 0; i < 101; i++)
+    for (i = 0; i < 101; ++i)
     {
         long actual = list_get(l, i);
         TEST_CHECK_(actual == i,
@@ -419,6 +420,7 @@ void test_basic_insert(void)
                     actual);
     }
     
+    check_error_status(not_in_error);
     free_list(l);
 }
 
@@ -426,16 +428,17 @@ void test_insert_adds_jt_nodes(void)
 {
     List* l = new_list();
     int i = 9999;
-    for (; i >= 0; i--)
+    for (; i >= 0; --i)
         list_insert(l, 0, i);
 
-    for (i = 0; i < 10000; i++)
+    for (i = 0; i < 10000; ++i)
         TEST_CHECK(list_get(l, i) == i);
     TEST_CHECK(l->head->value == 0);
 
-    for (i = 0; i < 10; i++)
+    for (i = 0; i < 10; ++i)
         TEST_CHECK(l->jump_table[i]->value == i * 1000);
 
+    check_error_status(not_in_error);
     free_list(l);
 }
 
@@ -448,9 +451,10 @@ void test_insert_expands_jt(void)
 
     TEST_CHECK(list_size(l) == 20001);
     TEST_CHECK(l->jt_size == 40);
-    for (i = 0; i <= 20; i++)
+    for (i = 0; i <= 20; ++i)
         TEST_CHECK(l->jump_table[i]->value == i * 1000);
 
+    check_error_status(not_in_error);
     free_list(l);
 }
 
@@ -465,7 +469,7 @@ void test_insert_modifies_jt(void)
 
     //insert at the end.  
     TEST_CHECK(l->jt_size == 10);
-    for (i = 0; i < 1000; i++)
+    for (i = 0; i < 1000; ++i)
     {
         list_insert(l, 10000, insert_num + i);
         TEST_CHECK(list_get(l, 10000) == insert_num + i);
@@ -493,12 +497,13 @@ void test_insert_modifies_jt(void)
     }
     TEST_CHECK(l->jump_table[1]->value == 0);
 
-    for (i = 1; i < 6; i++)
+    for (i = 1; i < 6; ++i)
         TEST_CHECK(l->jump_table[i]->value == (i-1) * 1000);
-    for (i = 7; i < 12; i++)
+    for (i = 7; i < 12; ++i)
         TEST_CHECK(l->jump_table[i]->value == (i-2) * 1000);
     TEST_CHECK(l->jump_table[12]->value == insert_num + 999);
 
+    check_error_status(not_in_error);
     free_list(l);
 }
 
@@ -517,6 +522,7 @@ void test_random_insert_get(void)
     }
     TEST_CHECK(list_size(l) == 10002);
 
+    check_error_status(not_in_error);
     free_list(l);
 }
 
@@ -548,6 +554,7 @@ void test_sorting(void)
     for (i = 0; i < 10; ++i)
         TEST_CHECK(l->jump_table[i]->value == i * 1000);
 
+    check_error_status(not_in_error);
     free_list(l);
 }
 
@@ -564,6 +571,7 @@ void test_sort_emtpy_and_single(void)
     TEST_CHECK(l->tail->value == 0);
     TEST_CHECK(list_get(l, 0) == 0);
 
+    check_error_status(not_in_error);
     free_list(l);
 }
 
@@ -572,7 +580,7 @@ void test_sort_random(void)
 {
     List* l = new_list();
     long i = 0;
-    for (; i < 1000; i++)
+    for (; i < 1000; ++i)
         list_add(l, rand() % 100000);
 
     sort_list(l);
@@ -591,6 +599,7 @@ void test_sort_random(void)
         TEST_CHECK(l->jump_table[i]->value >= l->jump_table[i-1]->value);
     }
 
+    check_error_status(not_in_error);
     free_list(l);
 }
 
@@ -632,6 +641,7 @@ void test_large_sort(void)
         TEST_CHECK(l->jump_table[i]->value >= l->jump_table[i-1]->value);
     }
 
+    check_error_status(not_in_error);
     free_list(l);
 }
 
@@ -650,6 +660,7 @@ void test_get_after_sort(void)
     for (i = 0; i <= 10; ++i)
         TEST_CHECK(l->jump_table[i]->value == i * 1000);
 
+    check_error_status(not_in_error);
     free_list(l);
 }
 
@@ -669,7 +680,52 @@ void test_sort_sorted_list(void)
     
     TEST_CHECK(l->jump_table[0]->value == 0);
 
+    check_error_status(not_in_error);
     free_list(l);
+}
+
+
+enum ops
+{
+    add = 0,
+    insert = 40,
+    pop = 60,
+    remove = 80,
+    sort = 90
+};
+
+void battery_op(List* l, int seed, int value)
+{
+    int op = seed % 100;
+    if (op >= add && op < insert)
+    {
+        int val = rand();
+        list_add(l, val);
+        TEST_CHECK(l->tail->value == val);
+        TEST_CHECK(list_get(l, list_size(l)-1));
+    }
+    else if (op >= insert && op < pop)
+    {
+
+    }
+    else if (op >= pop && op < remove)
+    {
+
+    }
+    else if (op >= remove && op < sort)
+    {
+
+    }
+    else
+    {
+        sort_list(l);
+    }
+}
+
+
+void test_battery_of_operations(void)
+{
+
 }
 
 

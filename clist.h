@@ -234,7 +234,7 @@ free_list(List* l)
 {
     _ListNode* current = l->head;
     list_index_t i;
-    for (i = 0; i < list_size(l); i++) 
+    for (i = 0; i < list_size(l); ++i) 
     {
         #if FREE_LIST_ITEMS
         free(current->value)
@@ -289,7 +289,7 @@ _list_pointer_at(List* l, list_index_t index)
 
     _ListNode* destination = start;
     list_index_t i;
-    for (i = 0; i < distance_to_destination; i++)
+    for (i = 0; i < distance_to_destination; ++i)
         destination = destination->next;
     return destination;
 }
@@ -373,7 +373,7 @@ _list_adjust_jump_table_up(List* l, list_index_t index)
     list_index_t i = index / JT_INCREMENT;
     list_index_t largest_jt_index = (list_size(l) - 1) / JT_INCREMENT;
 
-    for (; i < (largest_jt_index); i++)
+    for (; i < (largest_jt_index); ++i)
     {
         //only advance ptr if index really does come before the jt node.  
         //for case exapmle: list_size(l) == 10001 and index == 9001,
@@ -382,14 +382,17 @@ _list_adjust_jump_table_up(List* l, list_index_t index)
             l->jump_table[i] = l->jump_table[i]->next;
     }
 
-    //handle final jump_table node if necessary.  
-    if ((list_size(l) - 1) % JT_INCREMENT == 0) //largest_jt_index * 1000 == list_size(l) - 1
+    //Handle final jump_table node if necessary.  
+    //largest_jt_index * 1000 == list_size(l) - 1.    
+    if ((list_size(l) - 1) % JT_INCREMENT == 0)
         //if the last element in the list ends on an index location,
         //repace it with NULL because an element is being removed.
         l->jump_table[largest_jt_index] = NULL;
     else if (index <= largest_jt_index * 1000)
+    {
         l->jump_table[largest_jt_index] =\
         l->jump_table[largest_jt_index]->next;
+    }
 }
 
 
@@ -403,7 +406,7 @@ _list_adjust_jump_table_down(List* l, list_index_t index)
         list_index_t i = index / JT_INCREMENT;
         list_index_t largest_jt_index = (list_size(l) - 1) / JT_INCREMENT;
     
-        for (; i <= largest_jt_index; i++)
+        for (; i <= largest_jt_index; ++i)
         {
             if (index <= (i * 1000))
                 l->jump_table[i] = l->jump_table[i]->prev;
@@ -556,6 +559,8 @@ sort_list(List* l)
         ++i;
     }
     l->tail = current;
+
+    //Handle last jump_table node if necessary.  
     if (i % JT_INCREMENT == 0)
             l->jump_table[i / JT_INCREMENT] = current;
 }
