@@ -687,45 +687,118 @@ void test_sort_sorted_list(void)
 
 enum ops
 {
-    add = 0,
-    insert = 40,
-    pop = 60,
-    remove = 80,
-    sort = 90
+    Add = 0,
+    Insert = 40,
+    Pop = 65,
+    Remove = 85,
+    Sort = 99
 };
 
-void battery_op(List* l, int seed, int value)
+void op_add(List* l)
 {
-    int op = seed % 100;
-    if (op >= add && op < insert)
+    list_index_t prev_size = list_size(l);
+    _ListNode* prev_tail = l->tail;
+    int val = rand();
+    list_add(l, val);
+    TEST_CHECK(list_size(l) == prev_size+1);
+    TEST_CHECK(l->tail->value == val);
+    TEST_CHECK(list_get(l, list_size(l)-1));
+    TEST_CHECK(l->tail->prev == prev_tail);
+}
+
+void op_insert(List* l)
+{
+    if (list_size(l) > 0)
     {
+        list_index_t prev_size = list_size(l);
         int val = rand();
-        list_add(l, val);
-        TEST_CHECK(l->tail->value == val);
-        TEST_CHECK(list_get(l, list_size(l)-1));
-    }
-    else if (op >= insert && op < pop)
-    {
-
-    }
-    else if (op >= pop && op < remove)
-    {
-
-    }
-    else if (op >= remove && op < sort)
-    {
-
-    }
-    else
-    {
-        sort_list(l);
+        list_index_t index = rand() % list_size(l);
+        _ListNode* prev = _list_pointer_at(l, index);
+        list_insert(l, index, val);
+        TEST_CHECK(list_size(l) == prev_size+1);
+        _ListNode* current = _list_pointer_at(l, index);
+        TEST_CHECK(current->value == val);
+        TEST_CHECK(current->next == prev);
     }
 }
 
+void op_pop(List* l)
+{
+    if (list_size(l) > 0)
+    {
+        list_index_t prev_size = list_size(l);
+        long expected_value = l->tail->value;
+        _ListNode* prev = l->tail->prev;
+        TEST_CHECK(list_pop(l) == expected_value);
+        TEST_CHECK(list_size(l) == prev_size-1);
+        TEST_CHECK(l->tail == prev);
+    }
+}
 
+void op_remove(List* l)
+{
+    if (list_size(l) > 0)
+    {
+        list_index_t index = rand() % list_size(l);
+        list_index_t prev_size = list_size(l);
+        _ListNode* current = _list_pointer_at(l, index);
+        long expected_value = current->value;
+        _ListNode* next = current->next;
+        TEST_CHECK(list_remove(l, index) == expected_value);
+        TEST_CHECK(list_size(l) == prev_size-1);
+        TEST_CHECK(_list_pointer_at(l, index) == next);
+    }
+}
+
+void op_sort(List* l)
+{
+    sort_list(l);
+    _ListNode* current = l->head;
+    while (current->next != NULL)
+    {
+        TEST_CHECK(current->value <= current->next->value);
+        current = current->next;
+    }
+
+    if (l->jt_size > 1)
+    {
+        list_index_t i = 0;
+        for (; i < l->jt_size-1; ++i)
+        {
+            if (l->jump_table[i+1] != NULL)
+                TEST_CHECK(l->jump_table[i]->value <= l->jump_table[i+1]->value);
+        }
+    }
+}
+
+void battery_op(List* l, int seed)
+{
+    int op = seed % 100;
+
+    if (op >= Add && op < Insert)
+        op_add(l);
+    else if (op >= Insert && op < Pop)
+        op_insert(l);
+    else if (op >= Pop && op < Remove)
+        op_pop(l);
+    else if (op >= Remove && op < Sort)
+        op_remove(l);
+    else
+        op_sort(l);
+}
+
+//This test takes a very long time.
 void test_battery_of_operations(void)
 {
+    List* l = new_list();
+    int num_ops = 250000;
+    int i = 0;
+    for (; i < num_ops; ++i)
+    {
+        battery_op(l, rand());
+    }
 
+    free_list(l);
 }
 
 
@@ -752,5 +825,6 @@ TEST_LIST = {
     {"List sorting - large", test_large_sort},
     {"List sorting - get after sort", test_get_after_sort},
     {"List sorting - repeat sorting list", test_sort_sorted_list},
+    {"Battery of random list operations", test_battery_of_operations},
     {NULL, NULL}
 };
