@@ -591,7 +591,7 @@ sort_list(List* l)
 }
 
 
-inline _ListNode*
+static inline _ListNode*
 _merge_sort_list(_ListNode* current_head, list_index_t sublist_size)
 {
     //Space-optimized mergesort based on the algorithm description found here:
@@ -653,7 +653,7 @@ _merge_sort_list(_ListNode* current_head, list_index_t sublist_size)
 }
 
 
-inline void
+static inline void
 _append(_ListNode** head, _ListNode** tail, _ListNode* next)
 {
     if (*tail)
