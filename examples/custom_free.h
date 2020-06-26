@@ -1,13 +1,16 @@
 //////////////////////////////////////////////////////////////////////////////
 //
 // custom_free.h
-// Experiment for dealing with freeing a list of lists.
+// Example of dealing with freeing a list of lists / multiple list value
+// types.
 //
 // Created by Nathan Boehm, 2020.  
 //
 //////////////////////////////////////////////////////////////////////////////
 
+
 #include <stdlib.h>
+
 
 struct list;
 
@@ -38,11 +41,13 @@ data_t Data_t(struct list* l, int i)
 }
 
 #define LIST_DATA_TYPE data_t
-int dummy_sort(data_t d) { return 1; }
-#define LEFT_BEFORE_RIGHT dummy_sort
 #define ERROR_RETURN_VALUE Data_t(NULL, 0)
+int dummy(data_t a, data_t b) {return 1;}
+#define LIST_COMPARATOR dummy
 
-#include <clist.h>
+#include "../include/clist.h"
+
+
 
 void custom_list_free(List* parent_list)
 {

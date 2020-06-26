@@ -1,5 +1,21 @@
-#include <../acutest/include/acutest.h>
+//////////////////////////////////////////////////////////////////////////////
+//
+// clist_test.c
+// Verifies correct behavior of clist.h.  
+//
+// Created by Nathan Boehm, 2020.  
+//
+//////////////////////////////////////////////////////////////////////////////
+
+
 #include <stdbool.h>
+#include "../../acutest/include/acutest.h"
+
+#define LIST_DATA_TYPE long
+#define ERROR_RETURN_VALUE -1
+
+#include "../include/clist.h"
+
 
 bool ERROR_STATUS = false;
 
@@ -19,12 +35,6 @@ int error_handler(char* func, char* arg, char* msg)
     ERROR_STATUS = true;
     return 0;
 }
-#define ERROR_HANDLER error_handler
-
-#define LIST_DATA_TYPE long
-#define ERROR_RETURN_VALUE -1
-
-#include <clist.h>
 
 
 void test_constants(void)
@@ -53,6 +63,8 @@ void test_new_list_intial_values(void)
 
 void test_get_invalid_index(void)
 {
+    //Custom error handler must be set each time with this unitesting framework.  
+    list_error_handler(error_handler);
     List* list = new_list();
     TEST_ASSERT(list != NULL);
 
@@ -71,6 +83,7 @@ indecies match their values, to make testing simpler.
 */
 void test_add_and_get(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     TEST_ASSERT(l != NULL);
 
@@ -110,6 +123,7 @@ void test_add_and_get(void)
 
 void test_simple_pop(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     TEST_ASSERT(l != NULL);
     
@@ -143,6 +157,7 @@ void test_simple_pop(void)
 
 void test_simple_remove(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     TEST_ASSERT(l != NULL);
 
@@ -171,6 +186,7 @@ void test_simple_remove(void)
 
 void test_remove_pop_error_cases(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     TEST_ASSERT(l != NULL);
 
@@ -190,6 +206,7 @@ void test_remove_pop_error_cases(void)
 
 void test_large_add(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     TEST_ASSERT(l != NULL);
 
@@ -208,6 +225,7 @@ void test_large_add(void)
 
 void test_pop_effect_on_jt(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     TEST_ASSERT(l != NULL);
 
@@ -258,6 +276,7 @@ void test_pop_effect_on_jt(void)
 
 void test_remove_effect_on_jt(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     TEST_ASSERT(l != NULL);
 
@@ -357,6 +376,7 @@ void test_remove_effect_on_jt(void)
 
 void test_random_remove_get(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     TEST_ASSERT(l != NULL);
 
@@ -402,6 +422,7 @@ void test_random_remove_get(void)
 
 void test_basic_insert(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     list_add(l, 0);
     list_add(l, 100);
@@ -426,6 +447,7 @@ void test_basic_insert(void)
 
 void test_insert_adds_jt_nodes(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     int i = 9999;
     for (; i >= 0; --i)
@@ -444,6 +466,7 @@ void test_insert_adds_jt_nodes(void)
 
 void test_insert_expands_jt(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     int i = 20000;
     for (; i >= 0; --i)
@@ -460,6 +483,7 @@ void test_insert_expands_jt(void)
 
 void test_insert_modifies_jt(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     int i = 0;
     for (; i < 10000; ++i)
@@ -509,6 +533,7 @@ void test_insert_modifies_jt(void)
 
 void test_random_insert_get(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     list_add(l, 0);
     list_add(l, 1);
@@ -528,6 +553,7 @@ void test_random_insert_get(void)
 
 void test_sorting(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     long i = 9999;
     for (; i >= 0; --i)
@@ -561,6 +587,7 @@ void test_sorting(void)
 
 void test_sort_emtpy_and_single(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     sort_list(l);
     list_add(l, 0);
@@ -578,6 +605,7 @@ void test_sort_emtpy_and_single(void)
 
 void test_sort_random(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     long i = 0;
     for (; i < 1000; ++i)
@@ -607,6 +635,7 @@ void test_sort_random(void)
 //this will probably take a while.  
 void test_large_sort(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
 
     long amnt = 1000000;
@@ -647,6 +676,7 @@ void test_large_sort(void)
 
 void test_get_after_sort(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     long i = 10000;
     for (; i >= 0; --i)
@@ -666,6 +696,7 @@ void test_get_after_sort(void)
 
 void test_sort_sorted_list(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     long i = 0;
     for (; i < 1000; ++i)
@@ -702,7 +733,7 @@ void op_add(List* l)
     list_add(l, val);
     TEST_CHECK(list_size(l) == prev_size+1);
     TEST_CHECK(l->tail->value == val);
-    TEST_CHECK(list_get(l, list_size(l)-1));
+    TEST_CHECK(list_get(l, list_size(l)-1) == val);
     TEST_CHECK(l->tail->prev == prev_tail);
 }
 
@@ -790,13 +821,15 @@ void battery_op(List* l, int seed)
 //This test takes a very long time.
 void test_battery_of_operations(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
-    int num_ops = 250000;
+    int num_ops = 100000;
     int i = 0;
     for (; i < num_ops; ++i)
     {
         battery_op(l, rand());
     }
+    check_error_status(false);
 
     free_list(l);
 }

@@ -1,5 +1,17 @@
-#include <../acutest/include/acutest.h>
-#include <custom_free.h>
+//////////////////////////////////////////////////////////////////////////////
+//
+// custom_free_test.c
+// Verifies that a list of lists can work and that custom_free.h can free one
+// without memory leaks.  
+//
+// Created by Nathan Boehm, 2020.  
+//
+//////////////////////////////////////////////////////////////////////////////
+
+
+#include "../../acutest/include/acutest.h"
+#include "../examples/custom_free.h"
+
 
 //operating on good faith... 
 int get_int(List* l, list_index_t index)

@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //
 // clist.h
-// Defines a header only, sortable list structure with 
+// Defines a sortable linked list structure with 
 // constant element access time and constant add() time (on average).  
 // API includes standard list operations, get(), insert(), remove(), add(),
 // pop(), etc.  
@@ -18,11 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum Constants
-{
-    JT_INCREMENT = (int)1000,
-    INITIAL_JT_SIZE = (unsigned)10
-};
 
 #ifndef LIST_DATA_TYPE
 #define LIST_DATA_TYPE void*
@@ -32,99 +27,102 @@ enum Constants
 #define ERROR_RETURN_VALUE NULL
 #endif
 
-#ifndef LEFT_BEFORE_RIGHT
-/*
-Default sorting function, items are sorted smallest first. If a < b, then
-it will come earlier in the list.  
-*/
-int _default_less_than(LIST_DATA_TYPE a, LIST_DATA_TYPE b) { return a < b; }
-#define LEFT_BEFORE_RIGHT _default_less_than
+#ifndef LIST_COMPARATOR
+static inline int _default_less_than(LIST_DATA_TYPE a, LIST_DATA_TYPE b)
+{
+    return a < b;
+}
+#define LIST_COMPARATOR _default_less_than
 #endif
 
-//convience option to have list items freed with the list.  
+//Convience option to have list items freed with the list.  
 #ifndef FREE_LIST_ITEMS
 #define FREE_LIST_ITEMS 0
 #endif
 
-#ifndef ERROR_HANDLER
-/*
-Default error handling callback function, if one is not defined.  
-Attempts to print an error message to stderr.  
-A user defined handler must have the same signature as the below function.  
-*/
-int _default_error_handler(char* func, char* arg, char* msg)
-{
-    fprintf(stderr, "list error:\nin function: %s\nargument(s): %s\n%s",
-            func, arg, msg);
-    return -1;
-}
-#define ERROR_HANDLER _default_error_handler
-#endif
 
-//List node structure.  
-typedef struct _list_node _ListNode;
+enum Constants
+{
+    JT_INCREMENT = (int)1000,
+    INITIAL_JT_SIZE = (unsigned)10
+};
+
+
 //Linked list structure. Do not modify internal contents.  
 typedef struct list List;
+//List node structure.  
+typedef struct _list_node _ListNode;
 //List indexing type.  
 typedef unsigned long list_index_t;
 //Filter function signature.  
 typedef int (*filter_function) (LIST_DATA_TYPE);
+//Error handler func signature.  
+typedef int (*error_handler_func) (char*, char*, char*);
+//Comparator func signature.  
+typedef int (*comparator_func) (LIST_DATA_TYPE, LIST_DATA_TYPE);
+
 
 //API functions
 /*
 Returns a newly allocated list on success or NULL if memory allocation failed.  
 User must free with free_list if the value returned is not NULL.  
-Does not call the ERROR_HANDLER function.  
+Does not call the list_error_handler function.  
 */
-List*          new_list(void);
+static inline List*           new_list(void);
 
 /*
 Frees memory associated with the given list.  
 */
-void           free_list(List*);
+static inline void            free_list(List*);
 
 /*
 Returns the number of elements in the given list.  
 */
-list_index_t   list_size(List*);
+static inline list_index_t    list_size(List*);
 
 /*
 Adds the given value to the given list.  
-Calls ERROR_HANDLER if there is a memory allocation error,
-User must free the current list on a memory allocation error.  
+Calls list_error_handler if there is a memory allocation error,
+User must free the list on a memory allocation error.  
 */
-void           list_add(List*, LIST_DATA_TYPE);
+static inline void            list_add(List*, LIST_DATA_TYPE);
 
 /*
 Removes the last node from the list and returns its value.  
-If the list has no items to pop, calls ERROR_HANDLER and returns
+If the list has no items to pop, calls list_error_handler and returns
 ERROR_RETURN_VALUE.  
 */
-LIST_DATA_TYPE list_pop(List*);
+static inline LIST_DATA_TYPE  list_pop(List*);
 
 /*
 Returns the value at the given index, if the index is valid.  
-Otherwise, calls ERROR_HANDLER and returns ERROR_RETURN_VALUE.  
+Otherwise, calls list_error_handler and returns ERROR_RETURN_VALUE.  
 */
-LIST_DATA_TYPE list_get(List*, list_index_t);
+static inline LIST_DATA_TYPE  list_get(List*, list_index_t);
 
 /*
 Inserts the given value at the specified position in the list.  
-Calls ERROR_HANDLER if the index is out of range.  
+Calls list_error_handler if the index is out of range.  
 */
-void           list_insert(List*, list_index_t, LIST_DATA_TYPE);
+static inline void            list_insert(List*, list_index_t, LIST_DATA_TYPE);
 
 /*
 Removes the list entry at the given index and returns its value,
-if the inedx is valid.  Otherwise calls ERROR_HANDLER and returns
+if the inedx is valid.  Otherwise calls list_error_handler and returns
 ERROR_RETURN_VALUE.  
 */
-LIST_DATA_TYPE list_remove(List*, list_index_t);
+static inline LIST_DATA_TYPE  list_remove(List*, list_index_t);
 
 /*
 Sorts the given list.  
 */
-void           sort_list(List* l);
+static inline void            sort_list(List* l);
+
+/*
+If the argument is not NULL, sets the list_error_handler function to be called
+when the list encounters an error.   Returns the current list_error_handler.  
+*/
+static inline error_handler_func list_error_handler(error_handler_func f);
 
 
 
@@ -132,63 +130,69 @@ void           sort_list(List* l);
 /*
 Internal function that returns a newly allocated _list_node structure.  
 */
-_ListNode*     _new_list_node(LIST_DATA_TYPE);
+static inline _ListNode*     _new_list_node(LIST_DATA_TYPE);
 
 /*
 Internal fucntion that frees memory associated with the given _ListNode*.  
 */
-void           _free_list_node(_ListNode*);
+static inline void           _free_list_node(_ListNode*);
 
 /*
 Internal function that returns a struct _list_node* at the given index.
 */
-_ListNode*     _list_pointer_at(List*, list_index_t);
+static inline _ListNode*     _list_pointer_at(List*, list_index_t);
 
 /*
-Set _jump_table node if there have been JT_INCREMENT additions
-since the last jump table node (or this is the first node).  
+Internal function that sets _jump_table node if there have been JT_INCREMENT
+additions since the last jump table node (or this is the first node).  
 */
-void           _list_add_jump_table_node(List*, _ListNode*);
-
-/*
-Internal function that advances every jump table node, after the given index,
-to it's ->prev.  For use when inserting a node.  
-*/
-void           _list_adjust_jump_table_up(List*, list_index_t);
+static inline void           _list_add_jump_table_node(List*, _ListNode*);
 
 /*
 Internal function that deadvances every jump table node, after the given index,
 to it's ->next.  For use when removing a node.  
 */
-void           _list_adjust_jump_table_down(List*, list_index_t);
+static inline void           _list_adjust_jump_table_up(List*, list_index_t);
+
+/*
+Internal function that advances every jump table node, after the given index,
+to it's ->prev.  For use when inserting a node.  
+*/
+static inline void           _list_adjust_jump_table_down(List*, list_index_t);
 
 /*
 Internal function that preforms a space optimized mergesort on the given list.  
-Progressively builds a sorted list on current_head.  
 */
-_ListNode*     _merge_sort_list(_ListNode*, list_index_t);
+static inline _ListNode*     _merge_sort_list(_ListNode*, list_index_t);
 
 /*
 Internal function that adjusts the given list's internal data to
-remove the given node and free the node.  
+remove the given node and then free it.  
 */
-LIST_DATA_TYPE _list_remove(List*, _ListNode*, list_index_t);
+static inline LIST_DATA_TYPE _list_remove(List*, _ListNode*, list_index_t);
 
 /*
 Internal function that removes that last node of the given list.  
 */
-LIST_DATA_TYPE _list_pop(List*);
+static inline LIST_DATA_TYPE _list_pop(List*);
 
 /*
-Internal function thatInserts the given node 
+Internal function that inserts the given node 
 at the specified location in the list.  
 */
-void           _list_insert(List*, list_index_t, _ListNode*);
+static inline void _list_insert(List*, list_index_t, _ListNode*);
 
 /*
-Internal function that appends a node tot he tail of another
+Internal function that appends a node to the ->next of another.  
 */
-void           _append(_ListNode**, _ListNode**, _ListNode*);
+static inline void _append(_ListNode**, _ListNode**, _ListNode*);
+
+/*
+Default error handling callback function, if one is not defined.  
+Attempts to print an error message to stderr.  
+A user defined handler must have the same signature as the function below.  
+*/
+static inline int _default_error_handler(char* func, char* arg, char* msg);
 
 
 
@@ -209,7 +213,25 @@ struct list
 };
 
 
-List*
+static inline int
+_default_error_handler(char* func, char* arg, char* msg)
+{
+    fprintf(stderr, "list error:\nin function: %s\nargument(s): %s\n%s",
+            func, arg, msg);
+    return -1;
+}
+
+static inline error_handler_func
+list_error_handler(error_handler_func f)
+{
+    static error_handler_func handler = _default_error_handler;
+    if (f != NULL)
+        handler = f;
+    return handler;
+}
+
+
+static inline List*
 new_list(void)
 {
     //Allocate list struct.  
@@ -229,15 +251,15 @@ new_list(void)
 }
 
 
-void
+static inline void
 free_list(List* l)
 {
     _ListNode* current = l->head;
     list_index_t i;
-    for (i = 0; i < list_size(l); ++i) 
+    for (i = 0; i < l->size; ++i) 
     {
         #if FREE_LIST_ITEMS
-        free(current->value)
+            free(current->value);
         #endif
 
         _ListNode* next = current->next;
@@ -253,32 +275,33 @@ free_list(List* l)
 }
 
 
-list_index_t
+static inline list_index_t
 list_size(List* l)
 {
     return l->size;
 }
 
 
-LIST_DATA_TYPE
+static inline LIST_DATA_TYPE
 list_get(List* l, list_index_t index)
 {
-    if (index < list_size(l))
+    if (index < l->size)
         return _list_pointer_at(l, index)->value;
     else
     {
         char arg_as_string[20];
         sprintf(arg_as_string, "(%ld)", index);
-        ERROR_HANDLER("list_at()", arg_as_string, "Index out of range!\n");
+        list_error_handler(NULL)\
+        ("list_at()", arg_as_string, "Index out of range!\n");
         return ERROR_RETURN_VALUE;
     }
 }
 
 
-_ListNode*
+static inline _ListNode*
 _list_pointer_at(List* l, list_index_t index)
 {
-    if (index == list_size(l) - 1)
+    if (index == l->size - 1)
         return l->tail;
 
     //Start at the closest multiple of JT_INCREMENT,
@@ -295,11 +318,11 @@ _list_pointer_at(List* l, list_index_t index)
 }
 
 
-void
+static inline void
 list_add(List* l, LIST_DATA_TYPE value)
 {
     _ListNode* le = _new_list_node(value);
-    if (list_size(l) == 0)
+    if (l->size == 0)
         l->head = le;
     else
     {
@@ -313,7 +336,7 @@ list_add(List* l, LIST_DATA_TYPE value)
 }
 
 
-_ListNode*
+static inline _ListNode*
 _new_list_node(LIST_DATA_TYPE value)
 {
     _ListNode* new_le = (_ListNode*)calloc(1, sizeof(_ListNode));
@@ -322,7 +345,7 @@ _new_list_node(LIST_DATA_TYPE value)
 }
 
 
-void
+static inline void
 _free_list_node(_ListNode* le)
 {
     le->next = NULL;
@@ -331,10 +354,10 @@ _free_list_node(_ListNode* le)
 }
 
 
-void
+static inline void
 _list_add_jump_table_node(List* l, _ListNode* jte)
 {
-    if (list_size(l) / JT_INCREMENT > (l->jt_size - 1))
+    if (l->size / JT_INCREMENT > (l->jt_size - 1))
     {
         /*_ListNode** new_table = (_ListNode**)
         realloc(l->jump_table, (l->jt_size * 2));
@@ -349,9 +372,9 @@ _list_add_jump_table_node(List* l, _ListNode* jte)
 
         if (!new_table)
         {
-            ERROR_HANDLER("_list_add_jump_table_node",
-                          "NA",
-                          "Memory allocation error");
+            list_error_handler(NULL)("_list_add_jump_table_node",
+                                     "NA",
+                                     "Memory allocation error");
         }
         else
         {
@@ -361,30 +384,30 @@ _list_add_jump_table_node(List* l, _ListNode* jte)
             l->jt_size *= 2;
         }
     }
-    if (list_size(l) % JT_INCREMENT == 0)
-        l->jump_table[list_size(l) / JT_INCREMENT] = jte;
+    if (l->size % JT_INCREMENT == 0)
+        l->jump_table[l->size / JT_INCREMENT] = jte;
 }
 
 
-void
+static inline void
 _list_adjust_jump_table_up(List* l, list_index_t index)
 {
     //Affected _jump_table entries starting index.  
     list_index_t i = index / JT_INCREMENT;
-    list_index_t largest_jt_index = (list_size(l) - 1) / JT_INCREMENT;
+    list_index_t largest_jt_index = (l->size - 1) / JT_INCREMENT;
 
     for (; i < (largest_jt_index); ++i)
     {
         //only advance ptr if index really does come before the jt node.  
-        //for case exapmle: list_size(l) == 10001 and index == 9001,
+        //for case exapmle: l->size == 10001 and index == 9001,
         //dont advance l->jump_table[9]
         if (index <= (i*1000))
             l->jump_table[i] = l->jump_table[i]->next;
     }
 
     //Handle final jump_table node if necessary.  
-    //largest_jt_index * 1000 == list_size(l) - 1.    
-    if ((list_size(l) - 1) % JT_INCREMENT == 0)
+    //largest_jt_index * 1000 == l->size - 1.    
+    if ((l->size - 1) % JT_INCREMENT == 0)
         //if the last element in the list ends on an index location,
         //repace it with NULL because an element is being removed.
         l->jump_table[largest_jt_index] = NULL;
@@ -396,15 +419,15 @@ _list_adjust_jump_table_up(List* l, list_index_t index)
 }
 
 
-void
+static inline void
 _list_adjust_jump_table_down(List* l, list_index_t index)
 {
     //l->size incr/decr is always last operation so size is +1 current.  
-    if (list_size(l) > 0) //list_insert() will catch the size == 0 case.  
+    if (l->size > 0) //list_insert() will catch the size == 0 case.  
     {
         //Affected jump_table entries starting index.  
         list_index_t i = index / JT_INCREMENT;
-        list_index_t largest_jt_index = (list_size(l) - 1) / JT_INCREMENT;
+        list_index_t largest_jt_index = (l->size - 1) / JT_INCREMENT;
     
         for (; i <= largest_jt_index; ++i)
         {
@@ -413,19 +436,20 @@ _list_adjust_jump_table_down(List* l, list_index_t index)
         }
     }
 
-    if (list_size(l) % JT_INCREMENT == 0)
+    if (l->size % JT_INCREMENT == 0)
         //In the case of an insert:
         //The last element is being pushed into a _jump_table node position.  
         _list_add_jump_table_node(l, l->tail);
 }
 
 
-LIST_DATA_TYPE
+static inline LIST_DATA_TYPE
 list_pop(List* l)
 {
-    if (list_size(l) < 1)
+    if (l->size < 1)
     {
-        ERROR_HANDLER("list_pop()", "NA", "List contains no items!\n");
+        list_error_handler(NULL)\
+        ("list_pop()", "NA", "List contains no items!\n");
         return ERROR_RETURN_VALUE;
     }
     else
@@ -433,16 +457,16 @@ list_pop(List* l)
 }
 
 
-LIST_DATA_TYPE
+static inline LIST_DATA_TYPE
 list_remove(List* l, list_index_t index)
 {
-    if (index >= list_size(l))
+    if (index >= l->size)
     {
         char arg_as_string[20];
         sprintf(arg_as_string, "(%ld)", index);
-        ERROR_HANDLER("list_remove()",
-                      arg_as_string,
-                      "Index out of bounds!\n");
+        list_error_handler(NULL)("list_remove()",
+                                 arg_as_string,
+                                 "Index out of bounds!\n");
         return ERROR_RETURN_VALUE;
     }
     else
@@ -450,13 +474,13 @@ list_remove(List* l, list_index_t index)
 }
 
 
-LIST_DATA_TYPE
+static inline LIST_DATA_TYPE
 _list_pop(List* l)
 {
     LIST_DATA_TYPE value = l->tail->value;
     struct _list_node* former_tail = l->tail;
 
-    if (list_size(l) == 1)
+    if (l->size == 1)
     {
         l->head = NULL;
         l->tail = NULL;
@@ -467,8 +491,8 @@ _list_pop(List* l)
         l->tail->next = NULL;
     }
 
-    if ((list_size(l) - 1) % JT_INCREMENT == 0)
-        l->jump_table[(list_size(l) - 1) / JT_INCREMENT] = NULL;
+    if ((l->size - 1) % JT_INCREMENT == 0)
+        l->jump_table[(l->size - 1) / JT_INCREMENT] = NULL;
 
     _free_list_node(former_tail);
     --l->size;
@@ -476,7 +500,7 @@ _list_pop(List* l)
 }
 
 
-LIST_DATA_TYPE
+static inline LIST_DATA_TYPE
 _list_remove(List* l, _ListNode* le, list_index_t index)
 {
     if (le == l->tail)
@@ -501,7 +525,7 @@ _list_remove(List* l, _ListNode* le, list_index_t index)
 }
 
 
-void
+static inline void
 list_insert(List* l, list_index_t index, LIST_DATA_TYPE value)
 {
     if (index == l->size)
@@ -510,7 +534,8 @@ list_insert(List* l, list_index_t index, LIST_DATA_TYPE value)
     {
         char arg_as_string[20];
         sprintf(arg_as_string, "(%ld)", index);
-        ERROR_HANDLER("list_at()", arg_as_string, "Index out of range!\n");
+        list_error_handler(NULL)\
+        ("list_at()", arg_as_string, "Index out of range!\n");
     }
     else
     {
@@ -520,7 +545,7 @@ list_insert(List* l, list_index_t index, LIST_DATA_TYPE value)
 }
 
 
-void
+static inline void
 _list_insert(List* l, list_index_t index, _ListNode* new_node)
 {
     if (index == 0)
@@ -543,10 +568,10 @@ _list_insert(List* l, list_index_t index, _ListNode* new_node)
 }
 
 
-void
+static inline void
 sort_list(List* l)
 {
-    if (list_size(l) == 0) return;
+    if (l->size == 0) return;
     l->head = _merge_sort_list(l->head, 1);
 
     _ListNode* current = l->head;
@@ -566,13 +591,12 @@ sort_list(List* l)
 }
 
 
-/*
-Space-optimized mergesort based on the algorithm description found here:
-https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html
-*/
-_ListNode*
+inline _ListNode*
 _merge_sort_list(_ListNode* current_head, list_index_t sublist_size)
 {
+    //Space-optimized mergesort based on the algorithm description found here:
+    //https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html
+
     _ListNode* new_head = NULL; 
     _ListNode* new_tail = NULL;
     _ListNode* first_list = current_head;
@@ -605,7 +629,7 @@ _merge_sort_list(_ListNode* current_head, list_index_t sublist_size)
                 first_list = first_list->next;
                 --f_size;
             }
-            else if (LEFT_BEFORE_RIGHT(second_list->value, first_list->value))
+            else if (LIST_COMPARATOR(second_list->value, first_list->value))
             {
                 _append(&new_head, &new_tail, second_list);
                 second_list = second_list->next;
@@ -629,7 +653,7 @@ _merge_sort_list(_ListNode* current_head, list_index_t sublist_size)
 }
 
 
-void
+inline void
 _append(_ListNode** head, _ListNode** tail, _ListNode* next)
 {
     if (*tail)
@@ -645,6 +669,7 @@ _append(_ListNode** head, _ListNode** tail, _ListNode* next)
         *tail = next;
     }
 }
+
 
 
 #endif
