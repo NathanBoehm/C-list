@@ -445,6 +445,18 @@ void test_basic_insert(void)
     free_list(l);
 }
 
+void test_insert_on_empty_list(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+
+    list_insert(l, 0, 1);
+    TEST_ASSERT(l->head != NULL);
+    TEST_CHECK(l->head->value == 1);
+    TEST_ASSERT(l->tail != NULL);
+    TEST_CHECK(l->tail->value == 1);
+}
+
 void test_insert_adds_jt_nodes(void)
 {
     list_error_handler(error_handler);
@@ -848,6 +860,7 @@ TEST_LIST = {
     {"removes reorganize jump table", test_remove_effect_on_jt},
     {"Series of random removes and gets", test_random_remove_get},
     {"Basic insert checks", test_basic_insert},
+    {"Insert first entry", test_insert_on_empty_list},
     {"Inserts populate jump table", test_insert_adds_jt_nodes},
     {"Inserts expand jump table size", test_insert_expands_jt},
     {"Inserts modify the jump table", test_insert_modifies_jt},

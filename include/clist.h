@@ -56,13 +56,13 @@ typedef struct _list_node _ListNode;
 typedef unsigned long list_index_t;
 //Filter function signature.  
 typedef int (*filter_function) (LIST_DATA_TYPE);
-//Error handler func signature.  
-typedef int (*error_handler_func) (char*, char*, char*);
-//Comparator func signature.  
+//Error handler function signature.  
+typedef int (*err_handler_ft) (char*, char*, char*);
+//Comparator function signature.  
 typedef int (*comparator_func) (LIST_DATA_TYPE, LIST_DATA_TYPE);
 
 
-//API functions
+/// API functions ///
 /*
 Returns a newly allocated list on success or NULL if memory allocation failed.  
 User must free with free_list if the value returned is not NULL.  
@@ -71,7 +71,7 @@ Does not call the list_error_handler function.
 static inline List*           new_list(void);
 
 /*
-Frees memory associated with the given list.  
+Frees the memory associated with the given list.  
 */
 static inline void            free_list(List*);
 
@@ -82,8 +82,8 @@ static inline list_index_t    list_size(List*);
 
 /*
 Adds the given value to the given list.  
-Calls list_error_handler if there is a memory allocation error,
-User must free the list on a memory allocation error.  
+Calls list_error_handler if there is a memory allocation error;
+user must free the list on a memory allocation error.  
 */
 static inline void            list_add(List*, LIST_DATA_TYPE);
 
@@ -108,7 +108,7 @@ static inline void            list_insert(List*, list_index_t, LIST_DATA_TYPE);
 
 /*
 Removes the list entry at the given index and returns its value,
-if the inedx is valid.  Otherwise calls list_error_handler and returns
+if the index is valid.  Otherwise calls list_error_handler and returns
 ERROR_RETURN_VALUE.  
 */
 static inline LIST_DATA_TYPE  list_remove(List*, list_index_t);
@@ -120,79 +120,83 @@ static inline void            sort_list(List* l);
 
 /*
 If the argument is not NULL, sets the list_error_handler function to be called
-when the list encounters an error.   Returns the current list_error_handler.  
+when the list encounters an error to the provided function.   
+Returns the current list_error_handler.  
 */
-static inline error_handler_func list_error_handler(error_handler_func f);
+static inline err_handler_ft  list_error_handler(err_handler_ft f);
 
 
 
-//Internal functions
+/// Internal functions ///
 /*
-Internal function that returns a newly allocated _list_node structure.  
+Internal function that returns a pointer to a
+newly allocated _list_node structure.  
 */
-static inline _ListNode*     _new_list_node(LIST_DATA_TYPE);
+static inline _ListNode*      _new_list_node(LIST_DATA_TYPE);
 
 /*
 Internal fucntion that frees memory associated with the given _ListNode*.  
 */
-static inline void           _free_list_node(_ListNode*);
+static inline void            _free_list_node(_ListNode*);
 
 /*
-Internal function that returns a struct _list_node* at the given index.
+Internal function that returns the _ListNode* at the given index.
 */
-static inline _ListNode*     _list_pointer_at(List*, list_index_t);
+static inline _ListNode*      _list_pointer_at(List*, list_index_t);
 
 /*
 Internal function that sets _jump_table node if there have been JT_INCREMENT
 additions since the last jump table node (or this is the first node).  
 */
-static inline void           _list_add_jump_table_node(List*, _ListNode*);
-
-/*
-Internal function that deadvances every jump table node, after the given index,
-to it's ->next.  For use when removing a node.  
-*/
-static inline void           _list_adjust_jump_table_up(List*, list_index_t);
+static inline void            _list_add_jump_table_node(List*, _ListNode*);
 
 /*
 Internal function that advances every jump table node, after the given index,
+to it's ->next.  For use when removing a node.  
+*/
+static inline void            _list_adjust_jump_table_up(List*, list_index_t);
+
+/*
+Internal function that deadvances every jump table node, after the given index,
 to it's ->prev.  For use when inserting a node.  
 */
-static inline void           _list_adjust_jump_table_down(List*, list_index_t);
+static inline void            _list_adjust_jump_table_down(List*, list_index_t);
 
 /*
 Internal function that preforms a space optimized mergesort on the given list.  
+Returns the new head node of the sorted list.  
 */
-static inline _ListNode*     _merge_sort_list(_ListNode*, list_index_t);
+static inline _ListNode*      _merge_sort_list(_ListNode*, list_index_t);
 
 /*
-Internal function that adjusts the given list's internal data to
-remove the given node and then free it.  
+Internal function that removes the _ListNode at the given index
+from the given list and returns its value.  
 */
-static inline LIST_DATA_TYPE _list_remove(List*, _ListNode*, list_index_t);
+static inline LIST_DATA_TYPE  _list_remove(List*, _ListNode*, list_index_t);
 
 /*
-Internal function that removes that last node of the given list.  
+Internal function that removes the last node of the given list
+and returns its value.  
 */
-static inline LIST_DATA_TYPE _list_pop(List*);
+static inline LIST_DATA_TYPE  _list_pop(List*);
 
 /*
 Internal function that inserts the given node 
 at the specified location in the list.  
 */
-static inline void _list_insert(List*, list_index_t, _ListNode*);
+static inline void            _list_insert(List*, list_index_t, _ListNode*);
 
 /*
 Internal function that appends a node to the ->next of another.  
 */
-static inline void _append(_ListNode**, _ListNode**, _ListNode*);
+static inline void            _append(_ListNode**, _ListNode**, _ListNode*);
 
 /*
 Default error handling callback function, if one is not defined.  
-Attempts to print an error message to stderr.  
+Attempts to print an error message to stderr and returns -1.  
 A user defined handler must have the same signature as the function below.  
 */
-static inline int _default_error_handler(char* func, char* arg, char* msg);
+static inline int  _default_error_handler(char* func, char* arg, char* msg);
 
 
 
@@ -221,10 +225,10 @@ _default_error_handler(char* func, char* arg, char* msg)
     return -1;
 }
 
-static inline error_handler_func
-list_error_handler(error_handler_func f)
+static inline err_handler_ft
+list_error_handler(err_handler_ft f)
 {
-    static error_handler_func handler = _default_error_handler;
+    static err_handler_ft handler = _default_error_handler;
     if (f != NULL)
         handler = f;
     return handler;
@@ -357,16 +361,9 @@ _free_list_node(_ListNode* le)
 static inline void
 _list_add_jump_table_node(List* l, _ListNode* jte)
 {
+    //Check if more space is needed in the jump_table.  
     if (l->size / JT_INCREMENT > (l->jt_size - 1))
     {
-        /*_ListNode** new_table = (_ListNode**)
-        realloc(l->jump_table, (l->jt_size * 2));
-        for whatever reason the above method of reallocating memory will
-          result in _jump_table memory being overwritten (consistently on
-          the 12th node in the _jump_table) which eventually cuases a
-          sigabrt. But the below method works - need to investigate what
-          is happening here, it seems like realloc call is failing but it
-          is not returning a NULL pointer like it is supposed to. */
         _ListNode** new_table =\
         (_ListNode**)calloc(sizeof(_ListNode*), l->jt_size * 2);
 
@@ -384,6 +381,7 @@ _list_add_jump_table_node(List* l, _ListNode* jte)
             l->jt_size *= 2;
         }
     }
+    //Check if new node is needed.  
     if (l->size % JT_INCREMENT == 0)
         l->jump_table[l->size / JT_INCREMENT] = jte;
 }
@@ -396,19 +394,17 @@ _list_adjust_jump_table_up(List* l, list_index_t index)
     list_index_t i = index / JT_INCREMENT;
     list_index_t largest_jt_index = (l->size - 1) / JT_INCREMENT;
 
-    for (; i < (largest_jt_index); ++i)
+    //Don't change last jump_table node yet.  
+    for (; i < largest_jt_index; ++i)
     {
-        //only advance ptr if index really does come before the jt node.  
-        //for case exapmle: l->size == 10001 and index == 9001,
-        //dont advance l->jump_table[9]
+        //Only advance ptr if index really does come before the jt node.  
+        //Exapmle: index == 9001, dont advance l->jump_table[9].  
         if (index <= (i*1000))
             l->jump_table[i] = l->jump_table[i]->next;
     }
 
-    //Handle final jump_table node if necessary.  
-    //largest_jt_index * 1000 == l->size - 1.    
     if ((l->size - 1) % JT_INCREMENT == 0)
-        //if the last element in the list ends on an index location,
+        //If the last element in the list ends on a jump_table location,
         //repace it with NULL because an element is being removed.
         l->jump_table[largest_jt_index] = NULL;
     else if (index <= largest_jt_index * 1000)
@@ -480,7 +476,7 @@ _list_pop(List* l)
     LIST_DATA_TYPE value = l->tail->value;
     struct _list_node* former_tail = l->tail;
 
-    if (l->size == 1)
+    if (l->size == 1) //l->head == l->tail
     {
         l->head = NULL;
         l->tail = NULL;
@@ -491,8 +487,8 @@ _list_pop(List* l)
         l->tail->next = NULL;
     }
 
-    if ((l->size - 1) % JT_INCREMENT == 0)
-        l->jump_table[(l->size - 1) / JT_INCREMENT] = NULL;
+    //Will only remove last node, if necessary.  
+    _list_adjust_jump_table_up(l, l->size-1);
 
     _free_list_node(former_tail);
     --l->size;
@@ -518,9 +514,9 @@ _list_remove(List* l, _ListNode* le, list_index_t index)
     LIST_DATA_TYPE value = le->value;
 
     _list_adjust_jump_table_up(l, index);
+
     _free_list_node(le);
     --l->size;
-
     return value;
 }
 
@@ -595,7 +591,7 @@ static inline _ListNode*
 _merge_sort_list(_ListNode* current_head, list_index_t sublist_size)
 {
     //Space-optimized mergesort based on the algorithm description found here:
-    //https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html
+    //https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html.  
 
     _ListNode* new_head = NULL; 
     _ListNode* new_tail = NULL;
