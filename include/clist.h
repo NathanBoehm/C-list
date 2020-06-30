@@ -116,14 +116,13 @@ static inline LIST_DATA_TYPE  list_remove(List*, list_index_t);
 /*
 Sorts the given list.  
 */
-static inline void            sort_list(List* l);
+static inline void            sort_list(List*);
 
 /*
 If the argument is not NULL, sets the list_error_handler function to be called
-when the list encounters an error to the provided function.   
-Returns the current list_error_handler.  
+when the list encounters an error.   Returns the current list_error_handler.  
 */
-static inline err_handler_ft  list_error_handler(err_handler_ft f);
+static inline err_handler_ft  list_error_handler(err_handler_ft);
 
 
 
