@@ -55,7 +55,7 @@ typedef struct _list_node _ListNode;
 //List indexing type.  
 typedef unsigned long list_index_t;
 //Filter function signature.  
-typedef int (*filter_function) (LIST_DATA_TYPE);
+typedef int (*filter_func) (LIST_DATA_TYPE);
 //Error handler function signature.  
 typedef int (*err_handler_ft) (char*, char*, char*);
 //Comparator function signature.  
@@ -123,6 +123,14 @@ If the argument is not NULL, sets the list_error_handler function to be called
 when the list encounters an error.   Returns the current list_error_handler.  
 */
 static inline err_handler_ft  list_error_handler(err_handler_ft);
+
+/*
+Returns a newly allocated array containing all list elements that meet the
+requirements of the given filter function.  The size of the returned array
+is stored in the given list_index_t pointer.  Returns NULL on memory allocation
+failure.  
+*/
+static inline LIST_DATA_TYPE*  list_where(List*, filter_func, list_index_t*);
 
 
 
@@ -778,6 +786,49 @@ _append(_ListNode** head, _ListNode** tail, _ListNode* next)
         *head = next;
         *tail = next;
     }
+}
+
+
+static inline LIST_DATA_TYPE*
+list_where(List* l, filter_func filter, list_index_t* size)
+{
+    list_index_t collection_size = 10;
+    LIST_DATA_TYPE* collection = (LIST_DATA_TYPE*)\
+    calloc(collection_size, sizeof(LIST_DATA_TYPE));
+    if (!collection)
+        return NULL;
+
+    _ListNode* current = l->head;
+    list_index_t count = 0;
+    while (current != NULL)
+    {
+        if (count >= collection_size) //Grow array.  
+        {
+            LIST_DATA_TYPE* new_collection = (LIST_DATA_TYPE*)\
+            calloc(collection_size * 2, sizeof(LIST_DATA_TYPE));
+            if (!new_collection)
+            {
+                free(collection);
+                return NULL;
+            }
+
+            memcpy(new_collection, collection, collection_size * sizeof(LIST_DATA_TYPE));
+            free(collection);
+            collection = new_collection;
+            collection_size *= 2;
+        }
+
+        if (filter(current->value))
+        {
+            collection[count] = current->value;
+            ++count;
+        }
+
+        current = current->next;
+    }
+
+    *size = count;
+    return collection;
 }
 
 

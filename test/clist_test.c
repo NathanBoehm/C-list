@@ -985,7 +985,43 @@ void test_battery_of_operations(void)
     {
         battery_op(l, rand());
     }
-    check_error_status(false);
+    check_error_status(not_in_error);
+
+    free_list(l);
+}
+
+
+int filter1to10(long x)
+{
+    return x > 0 && x <= 10;
+}
+
+int lessthan500(long x)
+{
+    return x < 500;
+}
+
+void test_where(void)
+{
+    List* l = new_list();
+    int i = 0;
+    for (; i < 10001; ++i)
+    {
+        list_add(l, i);
+    }
+
+    list_index_t size;
+    long* arr = list_where(l, filter1to10, &size);
+    TEST_CHECK(size == 10);
+    for (i = 0; i < 10; ++i)
+        TEST_CHECK(arr[i] == i+1);
+    free(arr);
+
+    arr = list_where(l, lessthan500, &size);
+    TEST_CHECK(size == 500);
+    for (i = 0; i < 500; ++i)
+        TEST_CHECK(arr[i] == i);
+    free(arr);
 
     free_list(l);
 }
@@ -1022,5 +1058,6 @@ TEST_LIST = {
     {"List sorting - get after sort", test_get_after_sort},
     {"List sorting - repeat sorting list", test_sort_sorted_list},
     {"Battery of random list operations", test_battery_of_operations},
+    {"Where", test_where},
     {NULL, NULL}
 };
