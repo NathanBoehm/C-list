@@ -81,7 +81,6 @@ For more examples, see the files under the examples directory or the unit-tests 
 
 ## Complexities
 This list module makes use of a "jump_table" that stores a node every JT_INCREMENT additions to the list. Instead of iterating from the beginning/end to reach a node, this list will start at the nearest of its stored nodes. This bounds the random access time to a constant O(JT_INCREMENT/2) iterations. It also stores the most recently accessed node to make iteration require θ(1) extra iterations, and potentially speed up accesses to nearby locations. This optimization requires O( (n/(JT_INCREMENT) * 2 ) extra space.
-[ n/JT_INCREMENT]
 
 | Function | Complexity| Notes|
 | ------------- | ------------- | ------------- |
