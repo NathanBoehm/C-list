@@ -75,8 +75,9 @@ For more examples, see the files under the examples directory or the unit-tests 
 | list_error_handler(err_handler_ft) | err_handler_ft: function to be set as the list error handler or NULL. | err_handler_ft | If the argument is not NULL, sets the list_error_handler function to be called when the list encounters an error. Returns the current list_error_handler | |
 
 # Notes
--  Internal functions/definitions are pretended with an underscore. These are not intended for use outside of the implementations of API functions.
-- Both the internal contents of the list struct and the _list_node struct used to contain elements for the list are not intended to be accessed by the user. Modifying their contents is likely to break the list.
+- This list makes use of node structure to store list elements but this has been abstracted away from the user. There is no need to interact with the _list_node struct.
+- Internal functions/definitions are pretended with an underscore. These are not intended for use outside of the implementations of API functions.
+- The fields of the list_node struct and list struct are not intended to be accessed by the user. Modifying the contents of either is likely to break the list.
 
 ## Complexities
 This list module makes use of a "jump_table" that stores a node every JT_INCREMENT additions to the list. Instead of iterating from the beginning/end to reach a node, this list will start at the nearest of its stored nodes. This bounds the random access time to a constant O(JT_INCREMENT/2) iterations. It also stores the most recently accessed node to make iteration require θ(1) extra iterations, and potentially speed up accesses to nearby locations. This optimization requires O( (n/(JT_INCREMENT) * 2 ) extra space.
