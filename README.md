@@ -93,5 +93,5 @@ This list module makes use of a "jump_table" that stores a node every JT_INCREME
 
 ## TODO
  - [x] Optimization for constant iteration time/faster accesses with nearby indices
- - [ ] Optimization for constant iteration time/faster accesses with nearby indices.
  - [ ] Linq-like API functions
+ - [ ]  Split .c/.h file version
