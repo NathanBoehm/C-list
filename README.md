@@ -87,7 +87,7 @@ This list module makes use of a "jump_table" that stores a node every JT_INCREME
 |list_add()| Ω(1), O(n) | Will be O(1) on average, but when the jump_table needs to be expanded will be O(n / JT_INCREMENT). The jump_table will need to be expanded every n additions. |
 | list_pop() | θ(1) | |
 | list_get() | θ(1) | See opening paragraph. |
-| list_insert() | Ω(1), O(n) | Will most likely require the jump_table to be updated, O(n / JT_INCREMENT). |
+| list_insert() | Ω(1), O(n) | Will most likely require the jump_table to be updated, O(n / (JT_INCREMENT - insert_index)). |
 | list_remove() | Ω(1), O(n) | Same as above. |
 | sort_list() | θ(n*log(n)) | Space-optimized (requires constant extra memory) mergesort based on the description found here: https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html. |
 
