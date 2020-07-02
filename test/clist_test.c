@@ -53,6 +53,8 @@ void test_new_list_intial_values(void)
     TEST_CHECK(l->tail == NULL);
     TEST_CHECK(l->jump_table != NULL);
     TEST_CHECK(l->jt_size == INITIAL_JT_SIZE);
+    TEST_CHECK(l->current_index == 0);
+    TEST_CHECK(l->current == NULL);
 
     size_t i = 0;
     for (; i < INITIAL_JT_SIZE; ++i)
@@ -81,6 +83,98 @@ void test_get_invalid_index(void)
 Note: in the below functions values are often added in such way that their
 indecies match their values, to make testing simpler.  
 */
+
+void test_get_sets_current(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    int i = 0;
+    for (; i < 2001; ++i)
+        list_add(l, i);
+    TEST_CHECK(l->current == NULL);
+    TEST_CHECK(l->current_index == 0);
+
+    list_get(l, list_size(l)-1);
+    TEST_CHECK(l->current == l->tail);
+    TEST_CHECK(l->current_index == list_size(l) - 1);
+
+    for (i = 0; i < 2001; ++i)
+    {
+        list_get(l, i);
+        TEST_CHECK(l->current->value == i);
+        TEST_CHECK(l->current_index == i);
+    }
+
+    free_list(l);
+}
+
+void test_ptr_at_not_set_current(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    list_add(l, 0);
+    list_add(l, 1);
+    list_add(l, 2);
+
+    _list_pointer_at(l, 2);
+    TEST_CHECK(l->current_index == 0);
+    TEST_CHECK(l->current == NULL);
+
+    list_get(l, 1);
+    _list_pointer_at(l, 0);
+    TEST_CHECK(l->current->value == 1);
+    TEST_CHECK(l->current_index == 1);
+
+    free_list(l);
+}
+
+
+void test_get_closest_jt_node(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    int i = 0;
+    for (; i < 10999; ++i)
+        list_add(l, i);
+
+    long dummy;
+    for (i = 0; i < 501; ++i)
+        TEST_CHECK(_get_closest_jt_node(l, i, &dummy)->value == 0);
+
+    for (i = 501; i < 1000; ++i)
+        TEST_CHECK(_get_closest_jt_node(l, i, &dummy)->value == 1 * JT_INCREMENT);
+
+    for (i = 2000; i < 2500; ++i)
+        TEST_CHECK(_get_closest_jt_node(l, i, &dummy)->value == 2 * JT_INCREMENT);
+
+    for (i = 10000; i < 11000; ++i)
+        TEST_CHECK(_get_closest_jt_node(l, i, &dummy)->value == 10 * JT_INCREMENT);
+
+    free_list(l);
+}
+
+
+void test_get_start_node(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    int i = 0;
+    for (; i < 10999; ++i)
+        list_add(l, i);
+
+    long dummy;
+    list_get(l, 500);
+    for (i = 251; i < 750; ++i)
+        TEST_CHECK(_get_start_node(l, i, &dummy) == l->current);
+    for (i = 0; i < 251; ++i)
+        TEST_CHECK(_get_start_node(l, i, &dummy) == l->jump_table[0]);
+    for (i = 750; i < 1000; ++i)
+        TEST_CHECK(_get_start_node(l, i, &dummy) == l->jump_table[1]);
+
+    free_list(l);
+}
+
+
 void test_add_and_get(void)
 {
     list_error_handler(error_handler);
@@ -149,6 +243,34 @@ void test_simple_pop(void)
     TEST_CHECK(list_size(l) == 0);
     TEST_CHECK(l->head == NULL);
     TEST_CHECK(l->tail == NULL);
+
+    check_error_status(not_in_error);
+    free_list(l);
+}
+
+
+void test_pop_after_get(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+
+    int i = 0;
+    for (; i < 501; ++i)
+        list_add(l, i);
+
+    for (i = 500; i > 0; --i)
+    {
+        list_get(l, i);
+        TEST_CHECK(l->current->value == i);
+        TEST_CHECK(l->current_index == i);
+        list_pop(l);
+        TEST_CHECK(l->current->value == i - 1);
+        TEST_CHECK(l->current_index == i - 1);
+    }
+    TEST_CHECK(list_pop(l) == 0);
+    TEST_CHECK(list_size(l) == 0);
+    TEST_CHECK(l->current == NULL);
+    TEST_CHECK(l->current_index == 0);
 
     check_error_status(not_in_error);
     free_list(l);
@@ -455,6 +577,8 @@ void test_insert_on_empty_list(void)
     TEST_CHECK(l->head->value == 1);
     TEST_ASSERT(l->tail != NULL);
     TEST_CHECK(l->tail->value == 1);
+
+    free_list(l);
 }
 
 void test_insert_adds_jt_nodes(void)
@@ -591,6 +715,26 @@ void test_sorting(void)
     //Check new jump_table values.  
     for (i = 0; i < 10; ++i)
         TEST_CHECK(l->jump_table[i]->value == i * 1000);
+
+    check_error_status(not_in_error);
+    free_list(l);
+}
+
+
+void test_sort_updates_current(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    int i = 5000;
+    for (; i >= 0; --i)
+        list_add(l, i);
+    list_get(l, 1);
+    TEST_CHECK(l->current->value == 4999);
+    TEST_CHECK(l->current_index == 1);
+    
+    sort_list(l);
+    TEST_CHECK(l->current->value == 4999);
+    TEST_CHECK(l->current_index == 4999);
 
     check_error_status(not_in_error);
     free_list(l);
@@ -851,8 +995,13 @@ TEST_LIST = {
     {"Constant values", test_constants},
     {"New list has correct intial values", test_new_list_intial_values},
     {"get on invalid index, is an error", test_get_invalid_index},
+    {"get sets current",   test_get_sets_current},
+    {"list_ptr_at doesnt set current", test_ptr_at_not_set_current},
+    {"get closest jump table node", test_get_closest_jt_node},
+    {"get iteration start node", test_get_start_node},
     {"Basic add and get checks", test_add_and_get},
     {"Basic pop checks", test_simple_pop},
+    {"Pop after get changes current", test_pop_after_get},
     {"Basic remove checks", test_simple_remove},
     {"Remove/pop on invalid index is error", test_remove_pop_error_cases},
     {"Large add and effect on jump table", test_large_add},
@@ -866,6 +1015,7 @@ TEST_LIST = {
     {"Inserts modify the jump table", test_insert_modifies_jt},
     {"Random inserts and gets", test_random_insert_get},
     {"List sorting", test_sorting},
+    {"sort after get updates currrent", test_sort_updates_current},  
     {"List sorting - empty and single", test_sort_emtpy_and_single},
     {"List sorting - random value", test_sort_random},
     {"List sorting - large", test_large_sort},

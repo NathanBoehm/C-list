@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch gcc_test",
+            "name": "(gdb) Launch debug_app",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/gcc_test",
+            "program": "${workspaceFolder}/test/debug_app",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

@@ -78,6 +78,20 @@ For more examples, see the files under the examples directory or the unit-tests 
 -  Internal functions/definitions are pretended with an underscore. These are not intended for use outside of the implementations of API functions.
 - Both the internal contents of the list struct and the _list_node struct used to contain elements for the list are not intended to be accessed by the user. Modifying their contents is likely to break the list.
 
+## Complexities
+This list module makes use of a "jump_table" that stores a node every JT_INCREMENT additions to the list. Instead of iterating from the beginning/end to reach a node, this list will start at the nearest of its stored nodes. This bounds the random access time to a constant O(JT_INCREMENT/2) iterations. It also stores the most recently accessed node to make iteration require θ(1) extra iterations, and potentially speed up accesses to nearby locations. This optimization requires O( (n/(JT_INCREMENT) * 2 ) extra space.
+[ n/JT_INCREMENT]
+
+| Function | Complexity| Notes|
+| ------------- | ------------- | ------------- |
+|list_add()| Ω(1), O(n) | Will be O(1) on average, but when the jump_table needs to be expanded will be O(n / JT_INCREMENT). The jump_table will need to be expanded every n additions. |
+| list_pop() | θ(1) | |
+| list_get() | θ(1) | See opening paragraph. |
+| list_insert() | Ω(1), O(n) | Will most likely require the jump_table to be updated, O(n / JT_INCREMENT). |
+| list_remove() | Ω(1), O(n) | Same as above. |
+| sort_list() | θ(n*log(n)) | Space-optimized (requires constant extra memory) mergesort based on the description found here: https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html. |
+
 ## TODO
+ - [x] Optimization for constant iteration time/faster accesses with nearby indices
  - [ ] Optimization for constant iteration time/faster accesses with nearby indices.
  - [ ] Linq-like API functions

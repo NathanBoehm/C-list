@@ -124,9 +124,24 @@ void battery_op(List* l, int seed)
         op_sort(l);
 }
 
-//This test takes a very long time.
 int main(int argc, char* agrv[])
 {
+    List* l = new_list();
+
+    list_add(l, 0);
+    list_add(l, 1);
+
+    int i = 0;
+    for (; i < 10000; ++i)
+    {
+        int index = rand() % (list_size(l)-1);
+        list_insert(l, index, i);
+        int val = list_get(l, index);
+        if (val != i)
+            printf("expected: %d, actual: %d\n", i, list_get(l, index));
+    }
+    free_list(l);
+    /*
     List* l = new_list();
     int num_ops = 100000;
     int i = 0;
@@ -136,4 +151,5 @@ int main(int argc, char* agrv[])
     }
 
     free_list(l);
+    */
 }

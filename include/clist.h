@@ -191,12 +191,35 @@ Internal function that appends a node to the ->next of another.
 static inline void            _append(_ListNode**, _ListNode**, _ListNode*);
 
 /*
+Internal function that returns the node nearest to the one requested.  
+Either a jump_table node or the previouisly accessed node, l->current.  
+Sets the long* argument to the distance between the nearest node and
+the one requested.
+*/
+static inline _ListNode*      _get_start_node(List*, list_index_t, long*);
+
+/*
+Internal function that returns the jump_table node closest to the given index.  
+Sets the long* argument to the distance between the jump_table node and the
+one at the provided index.  
+*/
+static inline _ListNode*      _get_closest_jt_node(List*, list_index_t, long*);
+
+/*
+Internal function that updates the list->current if it is equal to the
+given _ListNode.  Updates to le->next if it is not NULL otherwise updates to
+le->prev if it is not NULL, otherwise l->current is changed to NULL.  For
+Use when removing a node.  Also ajusts the numerical position of current_index
+according to the index of the remove operation (list_index_t).  
+*/
+static inline void  _update_list_current(List*, _ListNode*, list_index_t);
+
+/*
 Default error handling callback function, if one is not defined.  
 Attempts to print an error message to stderr and returns -1.  
 A user defined handler must have the same signature as the function below.  
 */
-static inline int  _default_error_handler(char* func, char* arg, char* msg);
-
+static inline int   _default_error_handler(char* func, char* arg, char* msg);
 
 
 struct _list_node
@@ -208,11 +231,13 @@ struct _list_node
 
 struct list
 {
-    unsigned long size;
-    _ListNode*    head;
-    _ListNode*    tail;
-    _ListNode**   jump_table;
-    unsigned long jt_size;
+    list_index_t size;
+    list_index_t jt_size;
+    list_index_t current_index;
+    _ListNode*   head;
+    _ListNode*   tail;
+    _ListNode**  jump_table;
+    _ListNode*   current;
 };
 
 
@@ -289,7 +314,12 @@ static inline LIST_DATA_TYPE
 list_get(List* l, list_index_t index)
 {
     if (index < l->size)
-        return _list_pointer_at(l, index)->value;
+    {
+        _ListNode* node = _list_pointer_at(l, index);
+        l->current = node;
+        l->current_index = index;
+        return node->value;
+    }
     else
     {
         char arg_as_string[20];
@@ -309,15 +339,65 @@ _list_pointer_at(List* l, list_index_t index)
 
     //Start at the closest multiple of JT_INCREMENT,
     //then iterate to reach the desired index.  
-    list_index_t jump_location = index / JT_INCREMENT;
-    _ListNode* start = l->jump_table[jump_location];
-    list_index_t distance_to_destination = index % JT_INCREMENT;
+    long dist_to_dest;
+    _ListNode* start = _get_start_node(l, index, &dist_to_dest);
+    int iterate_backward = dist_to_dest < 0;
+    dist_to_dest = labs(dist_to_dest);
 
     _ListNode* destination = start;
     list_index_t i;
-    for (i = 0; i < distance_to_destination; ++i)
-        destination = destination->next;
+    for (i = 0; i < dist_to_dest; ++i)
+    {
+        if (iterate_backward)
+            destination = destination->prev;
+        else
+            destination = destination->next;
+    }
     return destination;
+}
+
+
+static inline _ListNode*
+_get_start_node(List* l, list_index_t index, long* dist)
+{
+    long jump_location_dist;
+    _ListNode* jump_table_node = _get_closest_jt_node(l,
+                                                      index,
+                                                      &jump_location_dist);
+
+    long current_location_dist = (long)index - (long)l->current_index;
+
+    if (labs(current_location_dist) < labs(jump_location_dist) &&
+        (l->current != NULL))
+    {
+        *dist = current_location_dist;
+        return l->current;
+    }
+    
+    *dist = jump_location_dist;
+    return jump_table_node;
+}
+
+
+static inline _ListNode*
+_get_closest_jt_node(List* l, list_index_t index, long* jump_loc_dist)
+{
+    long lower_jump_location = (long)index / JT_INCREMENT;
+    long upper_jump_location = lower_jump_location + 1;
+
+    if (l->jt_size > upper_jump_location && //jt has entry that is not null
+        (l->jump_table[upper_jump_location] != NULL))
+    {
+        if (labs(index - (upper_jump_location * JT_INCREMENT)) < 
+            labs(index - (lower_jump_location * JT_INCREMENT)))
+            {
+                *jump_loc_dist = index - (upper_jump_location * JT_INCREMENT);
+                return l->jump_table[upper_jump_location];
+            }
+    }
+
+    *jump_loc_dist = index - (lower_jump_location * JT_INCREMENT);
+    return l->jump_table[lower_jump_location];
 }
 
 
@@ -404,7 +484,7 @@ _list_adjust_jump_table_up(List* l, list_index_t index)
 
     if ((l->size - 1) % JT_INCREMENT == 0)
         //If the last element in the list ends on a jump_table location,
-        //repace it with NULL because an element is being removed.
+        //repace it with NULL because an element is being removed.  
         l->jump_table[largest_jt_index] = NULL;
     else if (index <= largest_jt_index * 1000)
     {
@@ -474,6 +554,8 @@ _list_pop(List* l)
 {
     LIST_DATA_TYPE value = l->tail->value;
     struct _list_node* former_tail = l->tail;
+    //Must update b4 pointers change.  
+     _update_list_current(l, former_tail, l->size);
 
     if (l->size == 1) //l->head == l->tail
     {
@@ -495,6 +577,30 @@ _list_pop(List* l)
 }
 
 
+static inline void
+_update_list_current(List* l, _ListNode* le, list_index_t index)
+{
+    if (le == l->current && le != NULL)
+    {
+        if (le->next != NULL)
+            l->current = le->next;
+        else if (le->prev != NULL)
+        {
+            l->current = le->prev;
+            --l->current_index;
+        }
+        else
+        {
+            l->current = NULL;
+            l->current_index = 0;
+        }
+    }
+    //Remove/Insert before this node will adjust its position.  
+    else if (index < l->current_index)
+        --l->current_index;
+}
+
+
 static inline LIST_DATA_TYPE
 _list_remove(List* l, _ListNode* le, list_index_t index)
 {
@@ -502,11 +608,13 @@ _list_remove(List* l, _ListNode* le, list_index_t index)
         return _list_pop(l);
     else if (le == l->head) //l->head != l->tail
     {
+        _update_list_current(l, le, index); //Must update b4 pointers change.  
         l->head = l->head->next;
         l->head->prev = NULL;
     }
     else
     {
+        _update_list_current(l, le, index); //Must update b4 pointers change.  
         le->prev->next = le->next;
         le->next->prev = le->prev;
     }
@@ -552,11 +660,15 @@ _list_insert(List* l, list_index_t index, _ListNode* new_node)
     else
     {
         _ListNode* current_node = _list_pointer_at(l, index);
+
         new_node->prev = current_node->prev;
         new_node->next = current_node;
         current_node->prev->next = new_node;
         current_node->prev = new_node;
     }
+
+    if (l->current_index >= index)
+        ++l->current_index; //Insert will push node forward by one.  
     
     _list_adjust_jump_table_down(l, index);
     ++l->size;
@@ -573,6 +685,9 @@ sort_list(List* l)
     list_index_t i = 0;
     while(current->next != NULL)
     {
+        if (current == l->current) //Update current_position.  
+            l->current_index = i;
+
         if (i % JT_INCREMENT == 0)
             l->jump_table[i / JT_INCREMENT] = current;
         current = current->next;
