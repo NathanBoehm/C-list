@@ -65,7 +65,7 @@ For more examples, see the files under the examples directory or the unit-tests 
 | ------------- | ------------- | ------------- | ------------- | ------------- |
 | new_list(void) | void | List* | Returns a newly allocated list on success or NULL if memory allocation failed. | User must free with free_list if the value returned is not NULL. Does not call the list_error_handler function. |
 | free_list(List*) | List*: list structure to be freed. | void | Frees the memory associated with the List* | List* must have been allocated with new_list(). |
-| list_size(List*) | List*: list structure to get the size of. | LIST_DATA_TYPE | Returns the number of elements in the list | |
+| list_size(List*) | List*: list structure to get the size of. | list_index_t | Returns the number of elements in the list | |
 | list_add(List*, LIST_DATA_TYPE) | List*: list structure to be added to. LIST_DATA_TYPE: value to add. | void | Adds the given value to the given list. Calls list_error_handler if there is a memory allocation error. | user must free the list on a memory allocation error. |
 | list_pop(List*) | List*: list to be popped. | LIST_DATA_TYPE | Removes the last node from the list and returns its value. | If the list has no items to pop, calls list_error_handler and returns ERROR_RETURN_VALUE. |
 | list_get(List*,  list_index_t) | List*: list to retrieve from. list_index_t: index location to retrieve from. | LIST_DATA_TYPE | Returns the value at the given index. | If the index is invalid, calls list_error_handler and returns ERROR_RETURN_VALUE. |
