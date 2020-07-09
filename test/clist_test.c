@@ -1003,6 +1003,7 @@ int lessthan500(long x)
 
 void test_where(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     int i = 0;
     for (; i < 10001; ++i)
@@ -1010,20 +1011,140 @@ void test_where(void)
         list_add(l, i);
     }
 
-    list_index_t size;
-    long* arr = list_where(l, filter1to10, &size);
-    TEST_CHECK(size == 10);
+    List* collection = list_where(l, filter1to10);
+    TEST_CHECK(list_size(collection) == 10);
     for (i = 0; i < 10; ++i)
-        TEST_CHECK(arr[i] == i+1);
-    free(arr);
+        TEST_CHECK(list_get(collection, i) == i+1);
+    free_list(collection);
 
-    arr = list_where(l, lessthan500, &size);
-    TEST_CHECK(size == 500);
+    collection = list_where(l, lessthan500);
+    TEST_CHECK(list_size(collection) == 500);
     for (i = 0; i < 500; ++i)
-        TEST_CHECK(arr[i] == i);
-    free(arr);
+        TEST_CHECK(list_get(collection, i) == i);
+    free_list(collection);
+
+    check_error_status(not_in_error);
+    free_list(l);
+}
+
+void test_merge_small(void)
+{
+    list_error_handler(error_handler);
+    List* l1 = new_list();
+    List* l2 = new_list();
+
+    int i = 1;
+    for (; i < 11; ++i)
+    {
+        list_add(l1, i);
+        list_add(l2, i+10);
+    }
+    list_index_t jt_size = l1->jt_size;
+    _ListNode* current_jt_node = l1->jump_table[0];
+
+    list_merge(l1, l2);
+    TEST_CHECK(l1->size == 20);
+    for (i = 0; i < 20; ++i)
+        TEST_CHECK(list_get(l1, i) == i+1);
+    TEST_CHECK(jt_size == l1->jt_size); //jump_table should not have increased.  
+    TEST_CHECK(l1->jump_table[0] == current_jt_node);
+    TEST_CHECK(l1->tail->value == 20);
+    TEST_CHECK(l1->head->value == 1);
+
+    check_error_status(not_in_error);
+    free_list(l1);
+}
+
+void test_merge_null(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    list_add(l, 0);
+
+    list_merge(l, NULL);
+    check_error_status(not_in_error);
+    TEST_CHECK(list_get(l, 0) == 0);
+    TEST_CHECK(l->head == l->tail);
+    TEST_CHECK(l->head->value == 0);
+
+    list_merge(NULL, l);
+    check_error_status(in_error);
+    TEST_CHECK(list_get(l, 0) == 0);
+    TEST_CHECK(l->head == l->tail);
+    TEST_CHECK(l->head->value == 0);
 
     free_list(l);
+}
+
+void test_merge_doesnt_change_current(void)
+{
+    list_error_handler(error_handler);
+    List* l1 = new_list();
+    List* l2 = new_list();
+
+    int i = 1;
+    for (; i < 11; ++i)
+    {
+        list_add(l1, i);
+        list_add(l2, i+10);
+    }
+
+    TEST_CHECK(list_get(l1, 5) == 6);
+    TEST_CHECK(list_get(l2, 5) == 16);
+    list_merge(l1, l2);
+    TEST_CHECK(l1->current->value == 6);
+
+    check_error_status(not_in_error);
+    free_list(l1);
+}
+
+void test_merge_5k_lists(void)
+{
+    list_error_handler(error_handler);
+    List* l1 = new_list();
+    List* l2 = new_list();
+
+    int i = 0;
+    for (; i < 5000; ++i)
+    {
+        list_add(l1, i);
+        list_add(l2, i+5000);
+    }
+
+    list_merge(l1, l2);
+    TEST_CHECK(l1->jt_size == 10);
+    TEST_CHECK(l1->size == 10000);
+    for (i = 0; i < 10000; ++i)
+        TEST_CHECK_(list_get(l1, i) == i, "expected: %d, actual:%d\n", i, list_get(l1, i));
+    for (i = 0; i < 10; ++i)
+        TEST_CHECK(l1->jump_table[i]->value == i * JT_INCREMENT);
+
+    free_list(l1);
+}
+
+void test_merge_large_lists(void)
+{
+    list_error_handler(error_handler);
+    List* l1 = new_list();
+    List* l2 = new_list();
+
+    int i = 0;
+    for (; i < 100000; ++i)
+    {
+        list_add(l1, i);
+        list_add(l2, 100000+i);
+    }
+
+    list_merge(l1, l2);
+    TEST_CHECK(l1->jt_size == 400);
+    TEST_CHECK(l1->size == 200000);
+    for (i = 0; i < 200000; ++i)
+        TEST_CHECK(list_get(l1, i) == i);
+    for (i = 0; i < 200; ++i)
+        TEST_CHECK(l1->jump_table[i]->value == i * JT_INCREMENT);
+
+    check_error_status(not_in_error);
+    free_list(l1);
 }
 
 
@@ -1059,5 +1180,10 @@ TEST_LIST = {
     {"List sorting - repeat sorting list", test_sort_sorted_list},
     {"Battery of random list operations", test_battery_of_operations},
     {"Where", test_where},
+    {"Merge with small list", test_merge_small},
+    {"Merge with null cases", test_merge_null},
+    {"Merge doesn't change current", test_merge_doesnt_change_current},
+    {"Merge 5k lists has correct jump_table", test_merge_5k_lists},
+    {"Merge large lists has correct jt", test_merge_large_lists},
     {NULL, NULL}
 };

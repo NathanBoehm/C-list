@@ -126,21 +126,21 @@ void battery_op(List* l, int seed)
 
 int main(int argc, char* agrv[])
 {
-    List* l = new_list();
-
-    list_add(l, 0);
-    list_add(l, 1);
+    List* l1 = new_list();
+    List* l2 = new_list();
 
     int i = 0;
-    for (; i < 10000; ++i)
+    for (; i < 5000; ++i)
     {
-        int index = rand() % (list_size(l)-1);
-        list_insert(l, index, i);
-        int val = list_get(l, index);
-        if (val != i)
-            printf("expected: %d, actual: %d\n", i, list_get(l, index));
+        list_add(l1, i);
+        list_add(l2, i+5000);
     }
-    free_list(l);
+
+    list_merge(l1, l2);
+    for (i = 0; i < 10000; ++i)
+        list_get(l1, i);
+
+    free_list(l1);
     /*
     List* l = new_list();
     int num_ops = 100000;
