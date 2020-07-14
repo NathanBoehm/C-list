@@ -1156,7 +1156,7 @@ void test_merge_5k_lists(void)
     TEST_CHECK(l1->jt_size == 10);
     TEST_CHECK(l1->size == 10000);
     for (i = 0; i < 10000; ++i)
-        TEST_CHECK_(list_get(l1, i) == i, "expected: %d, actual:%d\n", i, list_get(l1, i));
+        TEST_CHECK(list_get(l1, i) == i);
     for (i = 0; i < 10; ++i)
         TEST_CHECK(l1->jump_table[i]->value == i * JT_INCREMENT);
 
@@ -1187,6 +1187,115 @@ void test_merge_large_lists(void)
 
     check_error_status(not_in_error);
     free_list(l1);
+}
+
+void test_split(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    int i = 0;
+    for (; i < 10; ++i)
+        list_add(l, i);
+
+    List* new_l = list_split(l, 5);
+    for (i = 0; i < 5; ++i)
+    {
+        TEST_CHECK(list_get(l, i) == i);
+        TEST_CHECK(list_get(new_l, i) == i+5);
+    }
+
+    TEST_CHECK(l->jump_table[0]->value == 0);
+    TEST_CHECK(new_l->jump_table[0]->value == 5);
+
+    check_error_status(not_in_error);
+    free_list(l);
+    free_list(new_l);
+}
+
+void test_split_medium(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    int i = 0;
+    for (; i < 10000; ++i)
+        list_add(l, i);
+
+    List* new_l = list_split(l, 5000);
+    for (i = 0; i < 5000; ++i)
+    {
+        TEST_CHECK(list_get(l, i) == i);
+        TEST_CHECK(list_get(new_l, i) == i+5000);
+    }
+
+    for (i = 0; i < 5; ++i)
+    {
+        TEST_CHECK(l->jump_table[i]->value == i * JT_INCREMENT);
+        TEST_CHECK(new_l->jump_table[i]->value == (i * JT_INCREMENT) + 5000);
+    }
+    for (i = 5; i < 10; ++i)
+    {
+        TEST_CHECK(l->jump_table[i] == NULL);
+        TEST_CHECK(new_l->jump_table[i] == NULL);
+    }
+
+    TEST_CHECK(l->tail->value == 4999);
+    TEST_CHECK(l->tail->next == NULL);
+    TEST_CHECK(new_l->tail->value == 9999);
+    TEST_CHECK(new_l->tail->next == NULL);
+    TEST_CHECK(new_l->head->value == 5000);
+    TEST_CHECK(new_l->head->prev == NULL);
+
+    check_error_status(not_in_error);
+    free_list(l);
+    free_list(new_l);
+}
+
+void test_split_on_zero(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    int i = 0;
+    for (; i < 10; ++i)
+        list_add(l, i);
+
+    List* nl = list_split(l, 0);
+    TEST_CHECK(nl == NULL);
+    check_error_status(in_error);
+    free_list(l);
+}
+
+void test_split_on_last(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    int i = 0;
+    for (; i < 10; ++i)
+        list_add(l, i);
+
+    List* nl = list_split(l, list_size(l)-1);
+    TEST_CHECK(list_size(nl) == 1);
+    TEST_CHECK(list_size(l) == 9);
+    TEST_CHECK(nl->head == nl->tail);
+    TEST_CHECK(nl->tail->value == 9);
+    check_error_status(not_in_error);
+    free_list(l);
+    free_list(nl);
+}
+
+void test_split_on_first(void)
+{
+    List* l = new_list();
+    int i = 0;
+    for (; i < 10; ++i)
+        list_add(l, i);
+    List* nl = list_split(l, 1);
+    TEST_CHECK(list_size(l) == 1);
+    TEST_CHECK(list_size(nl) == 9);
+    TEST_CHECK(l->head == l->tail);
+    TEST_CHECK(l->tail->value == 0);
+    check_error_status(not_in_error);
+    free_list(nl);
+    free_list(l);
 }
 
 
@@ -1228,5 +1337,10 @@ TEST_LIST = {
     {"Merge doesn't change current", test_merge_doesnt_change_current},
     {"Merge 5k lists has correct jump_table", test_merge_5k_lists},
     {"Merge large lists has correct jt", test_merge_large_lists},
+    {"Basic split", test_split},
+    {"Medium sized list split", test_split_medium},
+    {"Spliting on 0th index is an error", test_split_on_zero},
+    {"Spliting on last index", test_split_on_last},
+    {"Splitting on first index", test_split_on_first},
     {NULL, NULL}
 };

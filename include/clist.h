@@ -949,7 +949,7 @@ List* list_split(List* l, list_index_t index)
         ("list_split()", "NULL", "Given list was NULL!\n");
         return NULL;
     }
-    if (index >= l->size)
+    if (index >= l->size || index == 0)
     {
         char arg_as_string[20];
         sprintf(arg_as_string, "(%ld)", index);
@@ -967,11 +967,15 @@ List* list_split(List* l, list_index_t index)
 
     list_index_t invalid_jt_index = index / JT_INCREMENT;
     for (; invalid_jt_index < l->jt_size; ++invalid_jt_index)
-        l->jump_table[invalid_jt_index] = NULL;
+    {
+        if (index <= invalid_jt_index * JT_INCREMENT)
+            l->jump_table[invalid_jt_index] = NULL;
+    }
 
     l->tail = end->prev;
     end->prev->next = NULL;
-    l->size = l->size - index;
+    end->prev = NULL;
+    l->size -= (l->size - index);
 
     return new_l;
 }
@@ -986,7 +990,7 @@ list_split_where(List* l, filter_func filter)
         return NULL;
     }
 
-    return NULL;//removeme
+    return NULL;//REMOVEME
 }
 
 
