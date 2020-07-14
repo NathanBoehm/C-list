@@ -63,6 +63,7 @@ void test_new_list_intial_values(void)
     free_list(l);
 }
 
+
 void test_get_invalid_index(void)
 {
     //Custom error handler must be set each time with this unitesting framework.  
@@ -76,6 +77,46 @@ void test_get_invalid_index(void)
     check_error_status(in_error);
 
     free_list(list);
+}
+
+
+void test_api_null_checks(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+
+    TEST_CHECK(list_size(NULL) == (list_index_t)-1);
+    check_error_status(in_error);
+
+    list_add(NULL, 1);
+    check_error_status(in_error);
+
+    TEST_CHECK(list_pop(NULL) == ERROR_RETURN_VALUE);
+    check_error_status(in_error);
+
+    TEST_CHECK(list_get(NULL, 0) == ERROR_RETURN_VALUE);
+    check_error_status(in_error);
+
+    list_insert(NULL, 0, 0);
+    check_error_status(in_error);
+
+    TEST_CHECK(list_remove(NULL, 0) == ERROR_RETURN_VALUE);
+    check_error_status(in_error);
+
+    sort_list(NULL);
+    check_error_status(in_error);
+
+    TEST_CHECK(list_where(NULL, NULL) == NULL);
+    check_error_status(in_error);
+
+    list_merge(NULL, l);
+    check_error_status(in_error);
+
+    TEST_CHECK(list_split(NULL, 0) == NULL);
+    check_error_status(in_error);
+
+    TEST_CHECK(list_split_where(NULL, NULL) == NULL);
+    check_error_status(in_error);
 }
 
 
@@ -1119,6 +1160,7 @@ void test_merge_5k_lists(void)
     for (i = 0; i < 10; ++i)
         TEST_CHECK(l1->jump_table[i]->value == i * JT_INCREMENT);
 
+    check_error_status(not_in_error);
     free_list(l1);
 }
 
@@ -1152,6 +1194,7 @@ TEST_LIST = {
     {"Constant values", test_constants},
     {"New list has correct intial values", test_new_list_intial_values},
     {"get on invalid index, is an error", test_get_invalid_index},
+    {"API functions have null list checks", test_api_null_checks},
     {"get sets current",   test_get_sets_current},
     {"list_ptr_at doesnt set current", test_ptr_at_not_set_current},
     {"get closest jump table node", test_get_closest_jt_node},

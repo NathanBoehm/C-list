@@ -144,7 +144,7 @@ returning a new list containing the second half of the elements.
 */
 static inline List*           list_split(List*, list_index_t);
 
-static inline List*           list_split_where(List*, List*, filter_func);
+static inline List*           list_split_where(List*, filter_func);
 
 
 
@@ -242,7 +242,7 @@ according to the index of the remove operation (list_index_t).
 static inline void  _update_list_current(List*, _ListNode*, list_index_t);
 
 /*
-Reassignes all jump_table nodes by after index / JT_INCREMENT by iterating
+Reassignes all jump_table nodes after (index / JT_INCREMENT) by iterating
 starting from the given node (assumed to be at the specified index).  Returns
 the final node iterated to.  
 */
@@ -316,6 +316,8 @@ new_list(void)
 static inline void
 free_list(List* l)
 {
+    if (!l) return;
+
     _ListNode* current = l->head;
     list_index_t i;
     for (i = 0; i < l->size; ++i) 
@@ -340,6 +342,12 @@ free_list(List* l)
 static inline list_index_t
 list_size(List* l)
 {
+    if (!l)
+    {
+        list_error_handler(NULL)\
+        ("list_size()", "NA", "Given list was NULL!\n");
+        return (list_index_t)-1;
+    }
     return l->size;
 }
 
@@ -347,6 +355,13 @@ list_size(List* l)
 static inline LIST_DATA_TYPE
 list_get(List* l, list_index_t index)
 {
+    if (!l)
+    {
+        list_error_handler(NULL)\
+        ("list_at()", "NULL", "Given list was NULL!\n");
+        return ERROR_RETURN_VALUE;
+    }
+
     if (index < l->size)
     {
         _ListNode* node = _list_pointer_at(l, index);
@@ -438,6 +453,13 @@ _get_closest_jt_node(List* l, list_index_t index, long* jump_loc_dist)
 static inline void
 list_add(List* l, LIST_DATA_TYPE value)
 {
+    if (!l)
+    {
+        list_error_handler(NULL)\
+        ("list_add()", "NULL", "Given list was NULL!\n");
+        return;
+    }
+
     _ListNode* le = _new_list_node(value);
     if (l->size == 0)
         l->head = le;
@@ -560,6 +582,13 @@ _list_adjust_jump_table_down(List* l, list_index_t index)
 static inline LIST_DATA_TYPE
 list_pop(List* l)
 {
+    if (!l)
+    {
+        list_error_handler(NULL)\
+        ("list_pop()", "NULL", "Given list was NULL!\n");
+        return ERROR_RETURN_VALUE;
+    }
+
     if (l->size < 1)
     {
         list_error_handler(NULL)\
@@ -574,6 +603,13 @@ list_pop(List* l)
 static inline LIST_DATA_TYPE
 list_remove(List* l, list_index_t index)
 {
+    if (!l)
+    {
+        list_error_handler(NULL)\
+        ("list_remove()", "NULL", "Given list was NULL!\n");
+        return ERROR_RETURN_VALUE;
+    }
+
     if (index >= l->size)
     {
         char arg_as_string[20];
@@ -670,6 +706,13 @@ _list_remove(List* l, _ListNode* le, list_index_t index)
 static inline void
 list_insert(List* l, list_index_t index, LIST_DATA_TYPE value)
 {
+    if (!l)
+    {
+        list_error_handler(NULL)\
+        ("list_insert()", "NULL", "Given list was NULL!\n");
+        return;
+    }
+
     if (index == l->size)
         list_add(l, value);
     else if (index > l->size)
@@ -717,6 +760,13 @@ _list_insert(List* l, list_index_t index, _ListNode* new_node)
 static inline void
 sort_list(List* l)
 {
+    if (!l)
+    {
+        list_error_handler(NULL)\
+        ("sort_list()", "NULL", "Given list was NULL!\n");
+        return;
+    }
+
     if (l->size == 0) return;
     l->head = _merge_sort_list(l->head, 1);
     l->tail = _reassign_jump_table(l, 0, l->head);
@@ -829,9 +879,20 @@ _append(_ListNode** head, _ListNode** tail, _ListNode* next)
 static inline List*
 list_where(List* l, filter_func filter)
 {
+    if (!l)
+    {
+        list_error_handler(NULL)\
+        ("list_where()", "NULL", "Given list was NULL!\n");
+        return NULL;
+    }
+
     List* collection = new_list();
     if (!collection)
+    {
+        list_error_handler(NULL)\
+        ("list_where()", "NA", "Memory allocation error!\n");
         return NULL;
+    }
 
     _ListNode* current = l->head;
     while (current != NULL)
@@ -882,36 +943,50 @@ void list_merge(List* first, List* second)
 
 List* list_split(List* l, list_index_t index)
 {
+    if (!l)
+    {
+        list_error_handler(NULL)\
+        ("list_split()", "NULL", "Given list was NULL!\n");
+        return NULL;
+    }
     if (index >= l->size)
     {
         char arg_as_string[20];
         sprintf(arg_as_string, "(%ld)", index);
         list_error_handler(NULL)\
         ("list_split()", arg_as_string, "Index out of range!\n");
+        return NULL;
     }
-
-    list_index_t jt_split = index / JT_INCREMENT;
 
     List* new_l = new_list();
     _ListNode* end = _list_pointer_at(l, index);
     new_l->head = end;
     new_l->tail = l->tail;
     new_l->size = l->size - index;
-    _ListNode* current = new_l->head;
-    list_index_t i = 0;
-    while (current != NULL)
-    {
-        _list_add_jump_table_node(new_l, current);
+    _reassign_jump_table(new_l, 0, new_l->head);
 
-        current = current->next;
-        ++i;
-    }
+    list_index_t invalid_jt_index = index / JT_INCREMENT;
+    for (; invalid_jt_index < l->jt_size; ++invalid_jt_index)
+        l->jump_table[invalid_jt_index] = NULL;
 
     l->tail = end->prev;
     end->prev->next = NULL;
     l->size = l->size - index;
 
-    return NULL;//REMOVEME
+    return new_l;
+}
+
+static inline List*
+list_split_where(List* l, filter_func filter)
+{
+    if (!l)
+    {
+        list_error_handler(NULL)\
+        ("list_split_where()", "NULL", "Given list was NULL!\n");
+        return NULL;
+    }
+
+    return NULL;//removeme
 }
 
 
