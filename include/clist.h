@@ -41,12 +41,6 @@ static inline int _default_less_than(LIST_DATA_TYPE a, LIST_DATA_TYPE b)
 #endif
 
 
-enum Constants
-{
-    JT_INCREMENT = (int)1000,
-    INITIAL_JT_SIZE = (unsigned)10
-};
-
 
 //Linked list structure. Do not modify internal contents.  
 typedef struct list List;
@@ -57,9 +51,21 @@ typedef unsigned long list_index_t;
 //Filter function signature.  
 typedef int (*filter_func) (LIST_DATA_TYPE);
 //Error handler function signature.  
-typedef int (*err_handler_ft) (char*, char*, char*);
+typedef int (*err_handler_ft) (const char*, const char*, const char*);
 //Comparator function signature.  
 typedef int (*comparator_func) (LIST_DATA_TYPE, LIST_DATA_TYPE);
+
+
+enum Constants
+{
+    JT_INCREMENT = (int)1000,
+    INITIAL_JT_SIZE = (unsigned)10,
+    INDEX_ERR_RETURN_VALUE = (list_index_t)-1,
+};
+
+
+//NOTE: Error checking is handled by API functions, Internal functions assume
+//that the given parameters are correct.  
 
 
 /// API functions ///
@@ -200,6 +206,36 @@ Returns the new head node of the sorted list.
 static inline _ListNode*      _merge_sort_list(_ListNode*, list_index_t);
 
 /*
+Internal function that modifies pointers to link the given node into
+the given list at the specified index.  
+*/
+static inline void           _link_node(List*, list_index_t, _ListNode*);
+
+/*
+Internal function that links the given node into the specified list as its
+first element (l->head = node, l->tail = node).  
+*/
+static inline void           _link_first(List*, _ListNode*);
+
+/*
+Internal function that links the given node into the specified list as its
+new head node.  
+*/
+static inline void           _link_head(List*, _ListNode*);
+
+/*
+Internal function that links the given node into the specified list as its
+new tail node.  
+*/
+static inline void           _link_tail(List*, _ListNode*);
+
+/*
+Internal function that links the given node into the specified list, behind
+the given current_node and after current_node->prev.  
+*/
+static inline void           _link_middle(List*, _ListNode*, _ListNode*);
+
+/*
 Internal function that alters list structure and _ListNode structure pointers
 to remove links to/from the specified node and the given list.  
 */
@@ -264,7 +300,40 @@ Default error handling callback function, if one is not defined.
 Attempts to print an error message to stderr and returns -1.  
 A user defined handler must have the same signature as the function below.  
 */
-static inline int   _default_error_handler(char* func, char* arg, char* msg);
+static inline int _default_error_handler(const char*, const char*, const char*);
+
+/*
+Error handling wrapper to check for a NULL list.  
+*/
+static inline int _list_null_arg_error(List* l, const char* func);
+
+/*
+Error handling wrapper to check for an out of bounds index.  
+*/
+static inline int _list_index_error(List*, list_index_t, const char*);
+
+/*
+Error handling wrapper to check for failed memory allocations on jump tables.  
+*/
+static inline int _list_jt_allocation_error(_ListNode**, const char*);
+
+/*
+Error handling wrapper to check for list to small to be popped.  
+*/
+static inline int _list_size_error(List*, const char*);
+
+/*
+Error handling wrapper to check for failed memory allocation of a new list.  
+*/
+static inline int _list_allocation_error(List*, const char*);
+
+
+//Error checking macros.  
+#define NULL_ARG_ERROR(l)           _list_null_arg_error(l, __func__)
+#define INDEX_ERROR(l, index)       _list_index_error(l, index, __func__)
+#define JT_ALLOC_ERROR(table)       _list_jt_allocation_error(table, __func__)
+#define SIZE_ERROR(l)               _list_size_error(l, __func__)
+#define ALLOC_ERROR(l)              _list_allocation_error(l, __func__)
 
 
 struct _list_node
@@ -287,7 +356,7 @@ struct list
 
 
 static inline int
-_default_error_handler(char* func, char* arg, char* msg)
+_default_error_handler(const char* func, const char* arg, const char* msg)
 {
     fprintf(stderr, "list error:\nin function: %s\nargument(s): %s\n%s",
             func, arg, msg);
@@ -301,6 +370,74 @@ list_error_handler(err_handler_ft f)
     if (f != NULL)
         handler = f;
     return handler;
+}
+
+
+static inline int
+_list_null_arg_error(List* l, const char* func)
+{
+    if (!l)
+    {
+        list_error_handler(NULL)\
+        (func, "NA", "Given list was NULL!\n");
+        return -1;
+    }
+    return 0;
+}
+
+
+static inline int
+_list_index_error(List* l, list_index_t index, const char* func)
+{
+    if (index >= l->size)
+    {
+        char arg_as_string[20];
+        sprintf(arg_as_string, "(%ld)", index);
+        list_error_handler(NULL)\
+        (func, arg_as_string, "Index out of range!\n");
+        return -1;
+    }
+    return 0;
+}
+
+
+static inline int
+_list_jt_allocation_error(_ListNode** table, const char* func)
+{
+    if (!table)
+    {
+        list_error_handler(NULL)(func,
+                                 "NA",
+                                 "Memory allocation error");
+        return -1;
+    }
+    return 0;
+}
+
+
+static inline int
+_list_size_error(List* l, const char* func)
+{
+    if (l->size < 1)
+    {
+        list_error_handler(NULL)\
+        (func, "NA", "List contains no items!\n");
+        return -1;
+    }
+    return 0;
+}
+
+
+static inline int
+_list_allocation_error(List* l, const char* func)
+{
+    if (!l)
+    {
+        list_error_handler(NULL)\
+        (func, "NA", "Memory allocation error!\n");
+        return -1;
+    }
+    return 0;
 }
 
 
@@ -354,12 +491,7 @@ static inline list_index_t
 list_size(List* l)
 {
     //Error checking.  
-    if (!l)
-    {
-        list_error_handler(NULL)\
-        ("list_size()", "NA", "Given list was NULL!\n");
-        return (list_index_t)-1;
-    }
+    if (NULL_ARG_ERROR(l)) return INDEX_ERR_RETURN_VALUE;
 
     return l->size;
 }
@@ -369,20 +501,8 @@ static inline LIST_DATA_TYPE
 list_get(List* l, list_index_t index)
 {
     //Error checking.  
-    if (!l)
-    {
-        list_error_handler(NULL)\
-        ("list_at()", "NULL", "Given list was NULL!\n");
-        return ERROR_RETURN_VALUE;
-    }
-    if (index >= l->size)
-    {
-        char arg_as_string[20];
-        sprintf(arg_as_string, "(%ld)", index);
-        list_error_handler(NULL)\
-        ("list_at()", arg_as_string, "Index out of range!\n");
-        return ERROR_RETURN_VALUE;
-    }
+    if (NULL_ARG_ERROR(l)) return ERROR_RETURN_VALUE;
+    if (INDEX_ERROR(l, index)) return ERROR_RETURN_VALUE;
 
     _ListNode* node = _list_pointer_at(l, index);
     l->current = node;
@@ -397,7 +517,7 @@ _list_pointer_at(List* l, list_index_t index)
     if (index == l->size - 1)
         return l->tail;
 
-    //Start at the closest multiple of JT_INCREMENT,
+    //Start at the closest multiple of JT_INCREMENT or l->current,
     //then iterate to reach the desired index.  
     long dist_to_dest;
     _ListNode* start = _get_start_node(l, index, &dist_to_dest);
@@ -467,22 +587,10 @@ static inline void
 list_add(List* l, LIST_DATA_TYPE value)
 {
     //Error checking.  
-    if (!l)
-    {
-        list_error_handler(NULL)\
-        ("list_add()", "NULL", "Given list was NULL!\n");
-        return;
-    }
+    if (NULL_ARG_ERROR(l)) return;
 
     _ListNode* le = _new_list_node(value);
-    if (l->size == 0)
-        l->head = le;
-    else
-    {
-        l->tail->next = le;
-        le->prev = l->tail;
-    }
-    l->tail = le;
+    _link_node(l, l->size, le);
 
     _list_add_jump_table_node(l, l->tail);
     ++l->size;
@@ -525,19 +633,13 @@ _list_grow_jump_table(List* l, list_index_t new_size)
     _ListNode** new_table =\
     (_ListNode**)calloc(sizeof(_ListNode*), new_size);
 
-    if (!new_table)
-    {
-        list_error_handler(NULL)("_list_add_jump_table_node",
-                                 "NA",
-                                 "Memory allocation error");
-    }
-    else
-    {
-        memcpy(new_table, l->jump_table, l->jt_size * sizeof(_ListNode*));
-        free(l->jump_table);
-        l->jump_table = new_table;
-        l->jt_size = new_size;
-    }
+    //Error checking.  
+    if (JT_ALLOC_ERROR(new_table)) return;
+
+    memcpy(new_table, l->jump_table, l->jt_size * sizeof(_ListNode*));
+    free(l->jump_table);
+    l->jump_table = new_table;
+    l->jt_size = new_size;
 }
 
 
@@ -596,19 +698,9 @@ _list_adjust_jump_table_down(List* l, list_index_t index)
 static inline LIST_DATA_TYPE
 list_pop(List* l)
 {
-    if (!l)
-    {
-        list_error_handler(NULL)\
-        ("list_pop()", "NULL", "Given list was NULL!\n");
-        return ERROR_RETURN_VALUE;
-    }
-
-    if (l->size < 1)
-    {
-        list_error_handler(NULL)\
-        ("list_pop()", "NA", "List contains no items!\n");
-        return ERROR_RETURN_VALUE;
-    }
+    //Error checking.  
+    if (NULL_ARG_ERROR(l)) return ERROR_RETURN_VALUE;
+    if (SIZE_ERROR(l)) return ERROR_RETURN_VALUE;
 
     return _list_pop(l);
 }
@@ -618,21 +710,8 @@ static inline LIST_DATA_TYPE
 list_remove(List* l, list_index_t index)
 {
     //Error checking.  
-    if (!l)
-    {
-        list_error_handler(NULL)\
-        ("list_remove()", "NULL", "Given list was NULL!\n");
-        return ERROR_RETURN_VALUE;
-    }
-    if (index >= l->size)
-    {
-        char arg_as_string[20];
-        sprintf(arg_as_string, "(%ld)", index);
-        list_error_handler(NULL)("list_remove()",
-                                 arg_as_string,
-                                 "Index out of bounds!\n");
-        return ERROR_RETURN_VALUE;
-    }
+    if (NULL_ARG_ERROR(l)) return ERROR_RETURN_VALUE;
+    if (INDEX_ERROR(l, index)) return ERROR_RETURN_VALUE;
 
     return _list_remove(l, _list_pointer_at(l, index), index);
 }
@@ -731,66 +810,87 @@ _list_remove(List* l, _ListNode* le, list_index_t index)
 static inline void
 list_insert(List* l, list_index_t index, LIST_DATA_TYPE value)
 {
-    if (!l)
-    {
-        list_error_handler(NULL)\
-        ("list_insert()", "NULL", "Given list was NULL!\n");
-        return;
-    }
+    //Error Checking.  
+    if (NULL_ARG_ERROR(l)) return;
+    if (l->size != 0)
+        if (INDEX_ERROR(l, index)) return;
 
-    if (index == l->size)
-        list_add(l, value);
-    else if (index > l->size)
-    {
-        char arg_as_string[20];
-        sprintf(arg_as_string, "(%ld)", index);
-        list_error_handler(NULL)\
-        ("list_at()", arg_as_string, "Index out of range!\n");
-    }
-    else
-    {
-        _ListNode* new_node = _new_list_node(value);
-        _list_insert(l, index, new_node);
-    }
+    _ListNode* new_node = _new_list_node(value);
+    _list_insert(l, index, new_node);
 }
 
 
 static inline void
 _list_insert(List* l, list_index_t index, _ListNode* new_node)
 {
-    if (index == 0)
-    {
-        l->head->prev = new_node;
-        new_node->next = l->head;
-        l->head = new_node;
-    }
-    else
-    {
-        _ListNode* current_node = _list_pointer_at(l, index);
-
-        new_node->prev = current_node->prev;
-        new_node->next = current_node;
-        current_node->prev->next = new_node;
-        current_node->prev = new_node;
-    }
+    _link_node(l, index, new_node);
+    
+    _list_adjust_jump_table_down(l, index);
 
     if (l->current_index >= index)
         ++l->current_index; //Insert will push node forward by one.  
-    
-    _list_adjust_jump_table_down(l, index);
     ++l->size;
+}
+
+
+static inline void
+_link_node(List* l, list_index_t index, _ListNode* node)
+{
+    if (l->size == 0)
+        _link_first(l, node);
+    else if (index == l->size)
+        _link_tail(l, node);
+    else if (index == 0)
+        _link_head(l, node);
+    else
+        _link_middle(l, _list_pointer_at(l, index), node);
+}
+
+
+static inline void
+_link_tail(List* l, _ListNode* node)
+{
+    l->tail->next = node;
+    node->prev = l->tail;
+    node->next = NULL;
+    l->tail = node;
+}
+
+
+static inline void
+_link_head(List* l, _ListNode* node)
+{
+    node->next = l->head;
+    node->prev = NULL;
+    l->head->prev = node;
+    l->head = node;
+}
+
+
+static inline void
+_link_first(List* l, _ListNode* node)
+{
+    node->prev = NULL;
+    node->next = NULL;
+    l->head = node;
+    l->tail = node;
+}
+
+
+static inline void
+_link_middle(List* l, _ListNode* current_node, _ListNode* node)
+{
+    node->prev = current_node->prev;
+    node->next = current_node;
+    current_node->prev->next = node;
+    current_node->prev = node;
 }
 
 
 static inline void
 sort_list(List* l)
 {
-    if (!l)
-    {
-        list_error_handler(NULL)\
-        ("sort_list()", "NULL", "Given list was NULL!\n");
-        return;
-    }
+    if (NULL_ARG_ERROR(l)) return;
 
     if (l->size == 0) return;
     l->head = _merge_sort_list(l->head, 1);
@@ -904,20 +1004,11 @@ _append(_ListNode** head, _ListNode** tail, _ListNode* next)
 static inline List*
 list_where(List* l, filter_func filter)
 {
-    if (!l)
-    {
-        list_error_handler(NULL)\
-        ("list_where()", "NULL", "Given list was NULL!\n");
-        return NULL;
-    }
-
     List* collection = new_list();
-    if (!collection)
-    {
-        list_error_handler(NULL)\
-        ("list_where()", "NA", "Memory allocation error!\n");
-        return NULL;
-    }
+
+    //Error checking.  
+    if (NULL_ARG_ERROR(l)) return NULL;
+    if (ALLOC_ERROR(l)) return NULL;
 
     _ListNode* current = l->head;
     while (current != NULL)
@@ -935,12 +1026,8 @@ list_where(List* l, filter_func filter)
 static inline void
 list_merge(List* first, List* second)
 {
-    if (first == NULL)
-    {
-        list_error_handler(NULL)\
-        ("list_split()", "NA", "first list was NULL!\n");
-        return;
-    }
+    //Error checking.  
+    if (NULL_ARG_ERROR(first)) return;
     if (second == NULL || second->size == 0) return;
 
     list_index_t last_jt_index = (first->size-1) / JT_INCREMENT;
@@ -970,20 +1057,10 @@ list_merge(List* first, List* second)
 static inline List*
 list_split(List* l, list_index_t index)
 {
-    if (!l)
-    {
-        list_error_handler(NULL)\
-        ("list_split()", "NULL", "Given list was NULL!\n");
-        return NULL;
-    }
-    if (index >= l->size || index == 0)
-    {
-        char arg_as_string[20];
-        sprintf(arg_as_string, "(%ld)", index);
-        list_error_handler(NULL)\
-        ("list_split()", arg_as_string, "Index out of range!\n");
-        return NULL;
-    }
+    //Error checking.  
+    if (NULL_ARG_ERROR(l)) return NULL;
+    if (INDEX_ERROR(l, index)) return NULL;
+    if (index == 0) return new_list();
 
     List* new_l = new_list();
     _ListNode* end = _list_pointer_at(l, index);
@@ -992,6 +1069,7 @@ list_split(List* l, list_index_t index)
     new_l->size = l->size - index;
     _reassign_jump_table(new_l, 0, new_l->head);
 
+    //NULL out invalid jump_table nodes.  
     list_index_t invalid_jt_index = index / JT_INCREMENT;
     for (; invalid_jt_index < l->jt_size; ++invalid_jt_index)
     {
@@ -1011,20 +1089,11 @@ list_split(List* l, list_index_t index)
 static inline List*
 list_split_where(List* l, filter_func filter)
 {
-    if (!l)
-    {
-        list_error_handler(NULL)\
-        ("list_split_where()", "NULL", "Given list was NULL!\n");
-        return NULL;
-    }
-
     List* nl = new_list();
-    if (!nl)
-    {
-        list_error_handler(NULL)\
-        ("list_split_where()", "NA", "Memory Allocation Error!\n");
-        return NULL;
-    }
+
+    //Error checking.  
+    if (NULL_ARG_ERROR(l)) return NULL;
+    if (ALLOC_ERROR(nl)) return NULL;
 
     int i = 0;
     _ListNode* current = l->head;

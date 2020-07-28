@@ -30,7 +30,7 @@ void check_error_status(bool should_be_error)
     TEST_CHECK(current == should_be_error);
 }
 
-int error_handler(char* func, char* arg, char* msg)
+int error_handler(const char* func, const char* arg, const char* msg)
 {
     ERROR_STATUS = true;
     return 0;
@@ -41,6 +41,7 @@ void test_constants(void)
 {
     TEST_CHECK(INITIAL_JT_SIZE == 10);
     TEST_CHECK(JT_INCREMENT == 1000);
+    TEST_CHECK(INDEX_ERR_RETURN_VALUE > 0);
 }
 
 
@@ -626,6 +627,7 @@ void test_insert_adds_jt_nodes(void)
 {
     list_error_handler(error_handler);
     List* l = new_list();
+    list_add(l, 10000);
     int i = 9999;
     for (; i >= 0; --i)
         list_insert(l, 0, i);
@@ -634,7 +636,7 @@ void test_insert_adds_jt_nodes(void)
         TEST_CHECK(list_get(l, i) == i);
     TEST_CHECK(l->head->value == 0);
 
-    for (i = 0; i < 10; ++i)
+    for (i = 0; i <= 10; ++i)
         TEST_CHECK(l->jump_table[i]->value == i * 1000);
 
     check_error_status(not_in_error);
@@ -645,11 +647,12 @@ void test_insert_expands_jt(void)
 {
     list_error_handler(error_handler);
     List* l = new_list();
+    list_add(l, 20001);
     int i = 20000;
     for (; i >= 0; --i)
         list_insert(l, 0, i);
 
-    TEST_CHECK(list_size(l) == 20001);
+    TEST_CHECK(list_size(l) == 20002);
     TEST_CHECK(l->jt_size == 40);
     for (i = 0; i <= 20; ++i)
         TEST_CHECK(l->jump_table[i]->value == i * 1000);
@@ -667,15 +670,6 @@ void test_insert_modifies_jt(void)
         list_add(l, i);
 
     int insert_num = 77777;
-
-    //insert at the end.  
-    TEST_CHECK(l->jt_size == 10);
-    for (i = 0; i < 1000; ++i)
-    {
-        list_insert(l, 10000, insert_num + i);
-        TEST_CHECK(list_get(l, 10000) == insert_num + i);
-        TEST_CHECK(l->jump_table[10]->value == insert_num + i);
-    }
 
     //insert in the middle.  
     TEST_CHECK(list_get(l, 5000) == 5000);
@@ -702,7 +696,6 @@ void test_insert_modifies_jt(void)
         TEST_CHECK(l->jump_table[i]->value == (i-1) * 1000);
     for (i = 7; i < 12; ++i)
         TEST_CHECK(l->jump_table[i]->value == (i-2) * 1000);
-    TEST_CHECK(l->jump_table[12]->value == insert_num + 999);
 
     check_error_status(not_in_error);
     free_list(l);
@@ -1259,8 +1252,8 @@ void test_split_on_zero(void)
         list_add(l, i);
 
     List* nl = list_split(l, 0);
-    TEST_CHECK(nl == NULL);
-    check_error_status(in_error);
+    TEST_CHECK(nl->size == 0);
+    check_error_status(not_in_error);
     free_list(l);
 }
 
@@ -1365,7 +1358,7 @@ void test_split_where(void)
         list_add(l, i);
 
     List* nl = list_split_where(l, filter1to10);
-    TEST_CHECK_(list_size(nl) == 10, "%d\n", list_size(nl));
+    TEST_CHECK(list_size(nl) == 10);
     for (i = 1; i <= 10; ++i)
         TEST_CHECK(list_get(nl, i) == i);
 
