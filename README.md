@@ -65,7 +65,7 @@ For more examples, see the files under the examples directory or the unit-tests 
 | ------------- | ------------- | ------------- | ------------- | ------------- |
 | new_list(void) | void | List* | Returns a newly allocated list on success or NULL if memory allocation failed. | User must free with free_list if the value returned is not NULL. Does not call the list_error_handler function. |
 | free_list(List*) | List*: list structure to be freed. | void | Frees the memory associated with the List* | List* must have been allocated with new_list(). |
-| list_size(List*) | List*: list structure to get the size of. | LIST_DATA_TYPE | Returns the number of elements in the list | |
+| list_size(List*) | List*: list structure to get the size of. | list_index_t | Returns the number of elements in the list | |
 | list_add(List*, LIST_DATA_TYPE) | List*: list structure to be added to. LIST_DATA_TYPE: value to add. | void | Adds the given value to the given list. Calls list_error_handler if there is a memory allocation error. | user must free the list on a memory allocation error. |
 | list_pop(List*) | List*: list to be popped. | LIST_DATA_TYPE | Removes the last node from the list and returns its value. | If the list has no items to pop, calls list_error_handler and returns ERROR_RETURN_VALUE. |
 | list_get(List*,  list_index_t) | List*: list to retrieve from. list_index_t: index location to retrieve from. | LIST_DATA_TYPE | Returns the value at the given index. | If the index is invalid, calls list_error_handler and returns ERROR_RETURN_VALUE. |
@@ -73,6 +73,7 @@ For more examples, see the files under the examples directory or the unit-tests 
 | list_remove(List*,  list_index_t) | List*: list to remove from. list_index_t: location to remove at. | LIST_DATA_TYPE | Removes the list entry at the given index and returns its value. | If the index is invalid, calls list_error_handler and returns ERROR_RETURN_VALUE. |
 | sort_list(List*) | List*: list to be sorted. | void | Sorts the given list. | |
 | list_error_handler(err_handler_ft) | err_handler_ft: function to be set as the list error handler or NULL. | err_handler_ft | If the argument is not NULL, sets the list_error_handler function to be called when the list encounters an error. Returns the current list_error_handler | |
+| list_where(List*, filter_func, list_index_t*) | filter_func: function to filter list items. list_index_t*: pointer to store returned array size. | LIST_DATA_TYPE* | Returns a newly allocated array containing all list elements that meet the requirements of the filter function. | The size of the returned array is stored in the given list_index_t pointer. Returns NULL on memory allocation failure. |
 
 # Notes
 - This list makes use of node structure to store list elements but this has been abstracted away from the user. There is no need to interact with the _list_node struct.
@@ -90,6 +91,7 @@ This list module makes use of a "jump_table" that stores a node every JT_INCREME
 | list_insert() | Ω(1), O(n) | Will most likely require the jump_table to be updated, O(n / (JT_INCREMENT - insert_index)). |
 | list_remove() | Ω(1), O(n) | Same as above. |
 | sort_list() | θ(n*log(n)) | Space-optimized (requires constant extra memory) mergesort based on the description found here: https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html. |
+| list_where() | θ(n) | |
 
 ## TODO
  - [x] Optimization for constant iteration time/faster accesses with nearby indices
