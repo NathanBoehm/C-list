@@ -1284,6 +1284,7 @@ void test_split_on_last(void)
 
 void test_split_on_first(void)
 {
+    list_error_handler(error_handler);
     List* l = new_list();
     int i = 0;
     for (; i < 10; ++i)
@@ -1296,6 +1297,81 @@ void test_split_on_first(void)
     check_error_status(not_in_error);
     free_list(nl);
     free_list(l);
+}
+
+void test_split_out_of_range(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    int i = 0;
+    for (; i < 10; ++i)
+        list_add(l, i);
+    List* nl = list_split(l, 11);
+    TEST_CHECK(nl == NULL);
+    check_error_status(in_error);
+    free_list(l);
+}
+
+int lists_equal(List* l1, List* l2)
+{
+    if (list_size(l1) != list_size(l2))
+        return false;
+    else
+    {
+        int i = 0;
+        for (; i < list_size(l1); ++i)
+        {
+            if (list_get(l1, i) != list_get(l2, i))
+                return false;
+        }
+    }
+
+    return true;
+}
+
+void test_split_and_merge(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    List* l1 = new_list();
+    int i = 0;
+    for (; i < 1000; ++i)
+    {
+        list_add(l, i);
+        list_add(l1, i);
+    }
+
+    List* l2 = list_split(l1, 500);
+    TEST_CHECK(!lists_equal(l, l1));
+    List* l3 = list_split(l2, 250);
+    List* l4 = list_split(l3, 125);
+
+    list_merge(l3, l4);
+    list_merge(l2, l3);
+    list_merge(l1, l2);
+    TEST_CHECK(lists_equal(l, l1));
+
+    check_error_status(not_in_error);
+    free_list(l1);
+    free_list(l);
+}
+
+void test_split_where(void)
+{
+    list_error_handler(error_handler);
+    List* l = new_list();
+    int i = 0;
+    for (; i < 100; ++i)
+        list_add(l, i);
+
+    List* nl = list_split_where(l, filter1to10);
+    TEST_CHECK_(list_size(nl) == 10, "%d\n", list_size(nl));
+    for (i = 1; i <= 10; ++i)
+        TEST_CHECK(list_get(nl, i) == i);
+
+    TEST_CHECK(list_get(l, 0) == 0);
+    for (i = 1; i <= 90; ++i)
+        TEST_CHECK(list_get(l, i) == i + 10);
 }
 
 
@@ -1342,5 +1418,8 @@ TEST_LIST = {
     {"Spliting on 0th index is an error", test_split_on_zero},
     {"Spliting on last index", test_split_on_last},
     {"Splitting on first index", test_split_on_first},
+    {"Split out of range is error", test_split_out_of_range},
+    {"Split and merge", test_split_and_merge},
+    //{"Split where", test_split_where},
     {NULL, NULL}
 };
