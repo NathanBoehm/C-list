@@ -144,6 +144,11 @@ returning a new list containing the second half of the elements.
 */
 static inline List*           list_split(List*, list_index_t);
 
+/*
+Splits the given list according to the filter function.  Elements that pass the
+filter are put in the newly returned list, all others remain in the original
+list.  
+*/
 static inline List*           list_split_where(List*, filter_func);
 
 
@@ -193,6 +198,12 @@ Internal function that preforms a space optimized mergesort on the given list.
 Returns the new head node of the sorted list.  
 */
 static inline _ListNode*      _merge_sort_list(_ListNode*, list_index_t);
+
+/*
+Internal function that alters list structure and _ListNode structure pointers
+to remove links to/from the specified node and the given list.  
+*/
+static inline void            _unlink_node(List* l, _ListNode*);
 
 /*
 Internal function that removes the _ListNode at the given index
@@ -342,12 +353,14 @@ free_list(List* l)
 static inline list_index_t
 list_size(List* l)
 {
+    //Error checking.  
     if (!l)
     {
         list_error_handler(NULL)\
         ("list_size()", "NA", "Given list was NULL!\n");
         return (list_index_t)-1;
     }
+
     return l->size;
 }
 
@@ -355,21 +368,14 @@ list_size(List* l)
 static inline LIST_DATA_TYPE
 list_get(List* l, list_index_t index)
 {
+    //Error checking.  
     if (!l)
     {
         list_error_handler(NULL)\
         ("list_at()", "NULL", "Given list was NULL!\n");
         return ERROR_RETURN_VALUE;
     }
-
-    if (index < l->size)
-    {
-        _ListNode* node = _list_pointer_at(l, index);
-        l->current = node;
-        l->current_index = index;
-        return node->value;
-    }
-    else
+    if (index >= l->size)
     {
         char arg_as_string[20];
         sprintf(arg_as_string, "(%ld)", index);
@@ -377,6 +383,11 @@ list_get(List* l, list_index_t index)
         ("list_at()", arg_as_string, "Index out of range!\n");
         return ERROR_RETURN_VALUE;
     }
+
+    _ListNode* node = _list_pointer_at(l, index);
+    l->current = node;
+    l->current_index = index;
+    return node->value;
 }
 
 
@@ -422,9 +433,11 @@ _get_start_node(List* l, list_index_t index, long* dist)
         *dist = current_location_dist;
         return l->current;
     }
-    
-    *dist = jump_location_dist;
-    return jump_table_node;
+    else
+    {
+        *dist = jump_location_dist;
+        return jump_table_node;
+    }
 }
 
 
@@ -453,6 +466,7 @@ _get_closest_jt_node(List* l, list_index_t index, long* jump_loc_dist)
 static inline void
 list_add(List* l, LIST_DATA_TYPE value)
 {
+    //Error checking.  
     if (!l)
     {
         list_error_handler(NULL)\
@@ -595,21 +609,21 @@ list_pop(List* l)
         ("list_pop()", "NA", "List contains no items!\n");
         return ERROR_RETURN_VALUE;
     }
-    else
-        return _list_pop(l);
+
+    return _list_pop(l);
 }
 
 
 static inline LIST_DATA_TYPE
 list_remove(List* l, list_index_t index)
 {
+    //Error checking.  
     if (!l)
     {
         list_error_handler(NULL)\
         ("list_remove()", "NULL", "Given list was NULL!\n");
         return ERROR_RETURN_VALUE;
     }
-
     if (index >= l->size)
     {
         char arg_as_string[20];
@@ -619,8 +633,8 @@ list_remove(List* l, list_index_t index)
                                  "Index out of bounds!\n");
         return ERROR_RETURN_VALUE;
     }
-    else
-        return _list_remove(l, _list_pointer_at(l, index), index);
+
+    return _list_remove(l, _list_pointer_at(l, index), index);
 }
 
 
@@ -629,26 +643,43 @@ _list_pop(List* l)
 {
     LIST_DATA_TYPE value = l->tail->value;
     struct _list_node* former_tail = l->tail;
-    //Must update b4 pointers change.  
-     _update_list_current(l, former_tail, l->size);
 
-    if (l->size == 1) //l->head == l->tail
+    //Must update b4 pointers change.  
+    _update_list_current(l, former_tail, l->size);
+    _unlink_node(l, former_tail);
+    //Will only remove last node, if necessary.  
+    _list_adjust_jump_table_up(l, l->size-1);
+
+    --l->size;
+
+    _free_list_node(former_tail);
+    return value;
+}
+
+
+static inline void
+_unlink_node(List* l, _ListNode* le)
+{
+    if (l->size == 1)
     {
         l->head = NULL;
         l->tail = NULL;
     }
-    else
+    else if (le == l->head) //l->head != l->tail
+    {
+        l->head = l->head->next;
+        l->head->prev = NULL;
+    }
+    else if (le == l->tail)
     {
         l->tail = l->tail->prev;
         l->tail->next = NULL;
     }
-
-    //Will only remove last node, if necessary.  
-    _list_adjust_jump_table_up(l, l->size-1);
-
-    _free_list_node(former_tail);
-    --l->size;
-    return value;
+    else
+    {
+        le->prev->next = le->next;
+        le->next->prev = le->prev;
+    }
 }
 
 
@@ -679,26 +710,20 @@ _update_list_current(List* l, _ListNode* le, list_index_t index)
 static inline LIST_DATA_TYPE
 _list_remove(List* l, _ListNode* le, list_index_t index)
 {
-    if (le == l->tail)
-        return _list_pop(l);
-    else if (le == l->head) //l->head != l->tail
-    {
-        _update_list_current(l, le, index); //Must update b4 pointers change.  
-        l->head = l->head->next;
-        l->head->prev = NULL;
-    }
-    else
-    {
-        _update_list_current(l, le, index); //Must update b4 pointers change.  
-        le->prev->next = le->next;
-        le->next->prev = le->prev;
-    }
     LIST_DATA_TYPE value = le->value;
 
-    _list_adjust_jump_table_up(l, index);
+    if (le == l->tail)
+        return _list_pop(l);
+    else
+    {
+        _update_list_current(l, le, index);
+        _unlink_node(l, le);
+        _list_adjust_jump_table_up(l, index);
+    }
+
+    --l->size;
 
     _free_list_node(le);
-    --l->size;
     return value;
 }
 
@@ -907,7 +932,8 @@ list_where(List* l, filter_func filter)
 }
 
 
-void list_merge(List* first, List* second)
+static inline void
+list_merge(List* first, List* second)
 {
     if (first == NULL)
     {
@@ -941,7 +967,8 @@ void list_merge(List* first, List* second)
 }
 
 
-List* list_split(List* l, list_index_t index)
+static inline List*
+list_split(List* l, list_index_t index)
 {
     if (!l)
     {
@@ -980,6 +1007,7 @@ List* list_split(List* l, list_index_t index)
     return new_l;
 }
 
+
 static inline List*
 list_split_where(List* l, filter_func filter)
 {
@@ -990,7 +1018,31 @@ list_split_where(List* l, filter_func filter)
         return NULL;
     }
 
-    return NULL;//REMOVEME
+    List* nl = new_list();
+    if (!nl)
+    {
+        list_error_handler(NULL)\
+        ("list_split_where()", "NA", "Memory Allocation Error!\n");
+        return NULL;
+    }
+
+    int i = 0;
+    _ListNode* current = l->head;
+    while (current != NULL)
+    {
+        if (filter(current->value))
+        {
+            list_add(nl, current->value);
+            current = current->next;
+            list_remove(l, i);
+        }
+        else
+            current = current->next;
+        
+        ++i;
+    }
+
+    return nl;
 }
 
 

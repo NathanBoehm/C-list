@@ -124,28 +124,24 @@ void battery_op(List* l, int seed)
         op_sort(l);
 }
 
+int filter1to10(int x)
+{
+    return x > 0 && x <= 10;
+}
+
 int main(int argc, char* agrv[])
 {
     List* l = new_list();
     int i = 0;
-    for (; i < 10000; ++i)
+    for (; i < 100; ++i)
         list_add(l, i);
 
-    List* new_l = list_split(l, 5000);
-    for (i = 0; i < 5000; ++i)
-    {
-        list_get(l, i) == i;
-        list_get(new_l, i) == i+5000;
-    }
+    List* nl = list_split_where(l, filter1to10);
 
-    for (i = 0; i < 5; ++i)
-    {
-        l->jump_table[i]->value == i * JT_INCREMENT;
-        new_l->jump_table[i]->value == (i * JT_INCREMENT) + 5000;
-    }
+    printf("%d\n", list_size(nl));
 
     free_list(l);
-    free_list(new_l);
+    free_list(nl);
     /*
     List* l = new_list();
     int num_ops = 100000;
