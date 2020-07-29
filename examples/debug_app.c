@@ -136,7 +136,7 @@ int main(int argc, char* agrv[])
     for (; i < 100; ++i)
         list_add(l, i);
 
-    List* nl = list_split_where(l, filter1to10);
+    List* nl = list_where(l, filter1to10);
 
     printf("%d\n", list_size(nl));
 

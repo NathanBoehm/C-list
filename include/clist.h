@@ -68,7 +68,10 @@ enum Constants
 //that the given parameters are correct.  
 
 
+
 /// API functions ///
+
+
 /*
 Returns a newly allocated list on success or NULL if memory allocation failed.  
 User must free with free_list if the value returned is not NULL.  
@@ -160,6 +163,8 @@ static inline List*           list_split_where(List*, filter_func);
 
 
 /// Internal functions ///
+
+
 /*
 Internal function that returns a pointer to a
 newly allocated _list_node structure.  
@@ -170,6 +175,12 @@ static inline _ListNode*      _new_list_node(LIST_DATA_TYPE);
 Internal fucntion that frees memory associated with the given _ListNode*.  
 */
 static inline void            _free_list_node(_ListNode*);
+
+/*
+Frees all memory associated with the list strucutre,
+but not the nodes (if any).  
+*/
+static inline void            _free_list_structures(List*);
 
 /*
 Internal function that returns the _ListNode* at the given index.
@@ -460,6 +471,12 @@ free_list(List* l)
         current = next;
     }
 
+    _free_list_structures(l);
+}
+
+static inline void
+_free_list_structures(List* l)
+{
     free(l->jump_table);
     l->jump_table = NULL;
     l->head = NULL;
@@ -574,7 +591,7 @@ list_add(List* l, LIST_DATA_TYPE value)
 
     _link_node(l, l->size, le);
     _list_add_jump_table_node(l, l->tail);
-    ++l->size;
+    ++(l->size);
 }
 
 
@@ -712,7 +729,7 @@ _list_pop(List* l)
     //Will only remove last node, if necessary.  
     _list_adjust_jump_table_up(l, l->size-1);
 
-    --l->size;
+    --(l->size);
 
     _free_list_node(former_tail);
     return value;
@@ -755,7 +772,7 @@ _update_list_current(List* l, _ListNode* le, list_index_t index)
         else if (le->prev != NULL)
         {
             l->current = le->prev;
-            --l->current_index;
+            --(l->current_index);
         }
         else
         {
@@ -765,7 +782,7 @@ _update_list_current(List* l, _ListNode* le, list_index_t index)
     }
     //Remove before this node will adjust its position.  
     else if (index < l->current_index)
-        --l->current_index;
+        --(l->current_index);
 }
 
 
@@ -783,7 +800,7 @@ _list_remove(List* l, _ListNode* le, list_index_t index)
         _list_adjust_jump_table_up(l, index);
     }
 
-    --l->size;
+    --(l->size);
 
     _free_list_node(le);
     return value;
@@ -811,8 +828,8 @@ _list_insert(List* l, list_index_t index, _ListNode* new_node)
     _list_adjust_jump_table_down(l, index);
 
     if (l->current_index >= index)
-        ++l->current_index; //Insert will push node forward by one.  
-    ++l->size;
+        ++(l->current_index); //Insert will push node forward by one.  
+    ++(l->size);
 }
 
 
@@ -997,7 +1014,6 @@ list_where(List* l, filter_func filter)
     {
         if (filter(current->value))
             list_add(collection, current->value);
-
         current = current->next;
     }
 
@@ -1027,12 +1043,7 @@ list_merge(List* first, List* second)
     _ListNode* start_node = first->jump_table[last_jt_index];
     _reassign_jump_table(first, last_jt_index * JT_INCREMENT, start_node);
 
-    //Free second list structure but not nodes.  
-    free(second->jump_table);
-    second->jump_table = NULL;
-    second->head = NULL;
-    second->tail = NULL;
-    free(second);
+    _free_list_structures(second);
 }
 
 
@@ -1088,12 +1099,12 @@ list_split_where(List* l, filter_func filter)
             _update_list_current(l, current, i);
             _unlink_node(l, current);
             _list_adjust_jump_table_up(l, i);
-            --l->size;
+            --(l->size);
 
             //list_add(nl, current->value);
             _link_node(nl, nl->size, current);
             _list_add_jump_table_node(nl, nl->tail);
-            ++nl->size;
+            ++(nl->size);
 
             --i;
         }
