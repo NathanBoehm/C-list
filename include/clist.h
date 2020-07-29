@@ -313,11 +313,6 @@ Error handling wrapper to check for an out of bounds index.
 static inline int _list_index_error(List*, list_index_t, const char*);
 
 /*
-Error handling wrapper to check for failed memory allocations on jump tables.  
-*/
-static inline int _list_jt_allocation_error(_ListNode**, const char*);
-
-/*
 Error handling wrapper to check for list to small to be popped.  
 */
 static inline int _list_size_error(List*, const char*);
@@ -325,15 +320,14 @@ static inline int _list_size_error(List*, const char*);
 /*
 Error handling wrapper to check for failed memory allocation of a new list.  
 */
-static inline int _list_allocation_error(List*, const char*);
+static inline int _list_allocation_error(void*, const char*);
 
 
 //Error checking macros.  
 #define NULL_ARG_ERROR(l)           _list_null_arg_error(l, __func__)
 #define INDEX_ERROR(l, index)       _list_index_error(l, index, __func__)
-#define JT_ALLOC_ERROR(table)       _list_jt_allocation_error(table, __func__)
 #define SIZE_ERROR(l)               _list_size_error(l, __func__)
-#define ALLOC_ERROR(l)              _list_allocation_error(l, __func__)
+#define ALLOC_ERROR(ptr)            _list_allocation_error(ptr, __func__)
 
 
 struct _list_node
@@ -362,6 +356,7 @@ _default_error_handler(const char* func, const char* arg, const char* msg)
             func, arg, msg);
     return -1;
 }
+
 
 static inline err_handler_ft
 list_error_handler(err_handler_ft f)
@@ -402,20 +397,6 @@ _list_index_error(List* l, list_index_t index, const char* func)
 
 
 static inline int
-_list_jt_allocation_error(_ListNode** table, const char* func)
-{
-    if (!table)
-    {
-        list_error_handler(NULL)(func,
-                                 "NA",
-                                 "Memory allocation error");
-        return -1;
-    }
-    return 0;
-}
-
-
-static inline int
 _list_size_error(List* l, const char* func)
 {
     if (l->size < 1)
@@ -429,9 +410,9 @@ _list_size_error(List* l, const char* func)
 
 
 static inline int
-_list_allocation_error(List* l, const char* func)
+_list_allocation_error(void* ptr, const char* func)
 {
-    if (!l)
+    if (!ptr)
     {
         list_error_handler(NULL)\
         (func, "NA", "Memory allocation error!\n");
@@ -588,10 +569,10 @@ list_add(List* l, LIST_DATA_TYPE value)
 {
     //Error checking.  
     if (NULL_ARG_ERROR(l)) return;
-
     _ListNode* le = _new_list_node(value);
-    _link_node(l, l->size, le);
+    if (ALLOC_ERROR(le)) return;
 
+    _link_node(l, l->size, le);
     _list_add_jump_table_node(l, l->tail);
     ++l->size;
 }
@@ -601,6 +582,8 @@ static inline _ListNode*
 _new_list_node(LIST_DATA_TYPE value)
 {
     _ListNode* new_le = (_ListNode*)calloc(1, sizeof(_ListNode));
+    if (!new_le) return NULL;
+
     new_le->value = value;
     return new_le;
 }
@@ -634,7 +617,7 @@ _list_grow_jump_table(List* l, list_index_t new_size)
     (_ListNode**)calloc(sizeof(_ListNode*), new_size);
 
     //Error checking.  
-    if (JT_ALLOC_ERROR(new_table)) return;
+    if (ALLOC_ERROR(new_table)) return;
 
     memcpy(new_table, l->jump_table, l->jt_size * sizeof(_ListNode*));
     free(l->jump_table);
@@ -1098,15 +1081,23 @@ list_split_where(List* l, filter_func filter)
     _ListNode* current = l->head;
     while (current != NULL)
     {
+        _ListNode* next = current->next;
         if (filter(current->value))
         {
-            list_add(nl, current->value);
-            current = current->next;
-            list_remove(l, i);
+            //list_remove(l, i);
+            _update_list_current(l, current, i);
+            _unlink_node(l, current);
+            _list_adjust_jump_table_up(l, i);
+            --l->size;
+
+            //list_add(nl, current->value);
+            _link_node(nl, nl->size, current);
+            _list_add_jump_table_node(nl, nl->tail);
+            ++nl->size;
+
             --i;
         }
-        else
-            current = current->next;
+        current = next;
         
         ++i;
     }
