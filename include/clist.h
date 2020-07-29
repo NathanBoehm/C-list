@@ -1004,10 +1004,9 @@ _append(_ListNode** head, _ListNode** tail, _ListNode* next)
 static inline List*
 list_where(List* l, filter_func filter)
 {
-    List* collection = new_list();
-
     //Error checking.  
     if (NULL_ARG_ERROR(l)) return NULL;
+    List* collection = new_list();
     if (ALLOC_ERROR(l)) return NULL;
 
     _ListNode* current = l->head;
@@ -1061,8 +1060,9 @@ list_split(List* l, list_index_t index)
     if (NULL_ARG_ERROR(l)) return NULL;
     if (INDEX_ERROR(l, index)) return NULL;
     if (index == 0) return new_list();
-
     List* new_l = new_list();
+    if (ALLOC_ERROR(new_l)) return NULL;
+
     _ListNode* end = _list_pointer_at(l, index);
     new_l->head = end;
     new_l->tail = l->tail;
@@ -1089,10 +1089,9 @@ list_split(List* l, list_index_t index)
 static inline List*
 list_split_where(List* l, filter_func filter)
 {
-    List* nl = new_list();
-
     //Error checking.  
     if (NULL_ARG_ERROR(l)) return NULL;
+    List* nl = new_list();
     if (ALLOC_ERROR(nl)) return NULL;
 
     int i = 0;
@@ -1104,6 +1103,7 @@ list_split_where(List* l, filter_func filter)
             list_add(nl, current->value);
             current = current->next;
             list_remove(l, i);
+            --i;
         }
         else
             current = current->next;
