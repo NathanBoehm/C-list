@@ -118,6 +118,8 @@ void test_api_null_checks(void)
 
     TEST_CHECK(list_split_where(NULL, NULL) == NULL);
     check_error_status(in_error);
+
+    free_list(l);
 }
 
 
@@ -1255,6 +1257,7 @@ void test_split_on_zero(void)
     TEST_CHECK(nl->size == 0);
     check_error_status(not_in_error);
     free_list(l);
+    free_list(nl);
 }
 
 void test_split_on_last(void)
@@ -1359,12 +1362,15 @@ void test_split_where(void)
 
     List* nl = list_split_where(l, filter1to10);
     TEST_CHECK(list_size(nl) == 10);
-    for (i = 1; i <= 10; ++i)
-        TEST_CHECK(list_get(nl, i) == i);
+    for (i = 0; i < 9; ++i)
+        TEST_CHECK(list_get(nl, i) == i+1);
 
     TEST_CHECK(list_get(l, 0) == 0);
-    for (i = 1; i <= 90; ++i)
+    for (i = 1; i < 90; ++i)
         TEST_CHECK(list_get(l, i) == i + 10);
+
+    free_list(l);
+    free_list(nl);
 }
 
 
@@ -1413,6 +1419,6 @@ TEST_LIST = {
     {"Splitting on first index", test_split_on_first},
     {"Split out of range is error", test_split_out_of_range},
     {"Split and merge", test_split_and_merge},
-    //{"Split where", test_split_where},
+    {"Split where", test_split_where},
     {NULL, NULL}
 };
