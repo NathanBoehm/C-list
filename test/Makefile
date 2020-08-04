@@ -1,6 +1,6 @@
 
 INC=-I. -I../test/
-FLAGS=-O0 -Wall -g
+FLAGS=-O2 -Wall -g
 CC=gcc
 
 .POHNY: buildtest
@@ -27,3 +27,7 @@ clean:
 .PHONY: debug_app
 debug_app:
 	$(CC) $(FLAGS) $(INC) ../include/clist.h ../examples/debug_app.c -o debug_app
+
+.PHONY: profiler_app
+profiler_app:
+	$(CC) $(FLAGS) -pg $(INC) ../include/clist.h ../examples/debug_app.c -o profiler_app

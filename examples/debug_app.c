@@ -133,15 +133,22 @@ int main(int argc, char* agrv[])
 {
     List* l = new_list();
     int i = 0;
-    for (; i < 100; ++i)
+    for (; i < 10; ++i)
         list_add(l, i);
 
-    List* nl = list_where(l, filter1to10);
+    List* new_l = list_split(l, 5);
+    for (i = 0; i < 5; ++i)
+    {
+        list_get(l, i) == i;
+        list_get(new_l, i) == i+5;
+    }
 
-    printf("%d\n", list_size(nl));
+    int is_true1 = l->jump_table[0]->value == 0;
+    int is_true2 = new_l->jump_table[0]->value == 5;
 
+    //check_error_status(not_in_error);
     free_list(l);
-    free_list(nl);
+    free_list(new_l);
     /*
     List* l = new_list();
     int num_ops = 100000;
