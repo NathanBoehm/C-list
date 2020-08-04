@@ -47,7 +47,7 @@ void test_constants(void)
 
 void test_new_list_intial_values(void)
 {
-    List* l = new_list();
+    list* l = new_list();
     TEST_ASSERT(l != NULL);
     TEST_CHECK(list_size(l) == 0);
     TEST_CHECK(l->head == NULL);
@@ -69,7 +69,7 @@ void test_get_invalid_index(void)
 {
     //Custom error handler must be set each time with this unitesting framework.  
     list_error_handler(error_handler);
-    List* list = new_list();
+    list* list = new_list();
     TEST_ASSERT(list != NULL);
 
     TEST_CHECK(list_get(list, 0) == ERROR_RETURN_VALUE);
@@ -84,9 +84,9 @@ void test_get_invalid_index(void)
 void test_api_null_checks(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
 
-    TEST_CHECK(list_size(NULL) == (list_index_t)-1);
+    TEST_CHECK(list_size(NULL) == (lindex)-1);
     check_error_status(in_error);
 
     list_add(NULL, 1);
@@ -131,7 +131,7 @@ indecies match their values, to make testing simpler.
 void test_get_sets_current(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 2001; ++i)
         list_add(l, i);
@@ -155,7 +155,7 @@ void test_get_sets_current(void)
 void test_ptr_at_not_set_current(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     list_add(l, 0);
     list_add(l, 1);
     list_add(l, 2);
@@ -176,7 +176,7 @@ void test_ptr_at_not_set_current(void)
 void test_get_closest_jt_node(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 10999; ++i)
         list_add(l, i);
@@ -201,7 +201,7 @@ void test_get_closest_jt_node(void)
 void test_get_start_node(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 10999; ++i)
         list_add(l, i);
@@ -222,7 +222,7 @@ void test_get_start_node(void)
 void test_add_and_get(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     TEST_ASSERT(l != NULL);
 
     list_add(l, 0);
@@ -262,7 +262,7 @@ void test_add_and_get(void)
 void test_simple_pop(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     TEST_ASSERT(l != NULL);
     
     //Add 100 numbers, largest first.  
@@ -296,7 +296,7 @@ void test_simple_pop(void)
 void test_pop_after_get(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
 
     int i = 0;
     for (; i < 501; ++i)
@@ -324,7 +324,7 @@ void test_pop_after_get(void)
 void test_simple_remove(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     TEST_ASSERT(l != NULL);
 
     size_t i = 0;
@@ -353,7 +353,7 @@ void test_simple_remove(void)
 void test_remove_pop_error_cases(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     TEST_ASSERT(l != NULL);
 
     TEST_CHECK(list_pop(l) == ERROR_RETURN_VALUE);
@@ -373,7 +373,7 @@ void test_remove_pop_error_cases(void)
 void test_large_add(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     TEST_ASSERT(l != NULL);
 
     size_t i = 0;
@@ -392,7 +392,7 @@ void test_large_add(void)
 void test_pop_effect_on_jt(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     TEST_ASSERT(l != NULL);
 
     //Add 10001 numbers.  
@@ -443,7 +443,7 @@ void test_pop_effect_on_jt(void)
 void test_remove_effect_on_jt(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     TEST_ASSERT(l != NULL);
 
     size_t i = 0;
@@ -543,7 +543,7 @@ void test_remove_effect_on_jt(void)
 void test_random_remove_get(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     TEST_ASSERT(l != NULL);
 
     size_t i = 0;
@@ -555,7 +555,7 @@ void test_random_remove_get(void)
         //Check that after a remove the same index will
         //have the value of the ->next of the previous node.  
         size_t index = rand() % (10000 - i);
-        _ListNode* current_node = _list_pointer_at(l, index);
+        _node* current_node = _list_pointer_at(l, index);
         size_t expected_value = current_node->next->value;
 
         list_remove(l, index);
@@ -589,7 +589,7 @@ void test_random_remove_get(void)
 void test_basic_insert(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     list_add(l, 0);
     list_add(l, 100);
 
@@ -614,7 +614,7 @@ void test_basic_insert(void)
 void test_insert_on_empty_list(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
 
     list_insert(l, 0, 1);
     TEST_ASSERT(l->head != NULL);
@@ -628,7 +628,7 @@ void test_insert_on_empty_list(void)
 void test_insert_adds_jt_nodes(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     list_add(l, 10000);
     int i = 9999;
     for (; i >= 0; --i)
@@ -648,7 +648,7 @@ void test_insert_adds_jt_nodes(void)
 void test_insert_expands_jt(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     list_add(l, 20001);
     int i = 20000;
     for (; i >= 0; --i)
@@ -666,7 +666,7 @@ void test_insert_expands_jt(void)
 void test_insert_modifies_jt(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 10000; ++i)
         list_add(l, i);
@@ -706,7 +706,7 @@ void test_insert_modifies_jt(void)
 void test_random_insert_get(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     list_add(l, 0);
     list_add(l, 1);
 
@@ -726,7 +726,7 @@ void test_random_insert_get(void)
 void test_sorting(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     long i = 9999;
     for (; i >= 0; --i)
     {
@@ -740,7 +740,7 @@ void test_sorting(void)
 
     sort_list(l);
 
-    _ListNode* current = l->head->next;
+    _node* current = l->head->next;
     TEST_CHECK(l->head->value == 0);
     while (current != NULL)
     {
@@ -760,7 +760,7 @@ void test_sorting(void)
 void test_sort_updates_current(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 5000;
     for (; i >= 0; --i)
         list_add(l, i);
@@ -780,7 +780,7 @@ void test_sort_updates_current(void)
 void test_sort_emtpy_and_single(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     sort_list(l);
     list_add(l, 0);
     sort_list(l);
@@ -798,14 +798,14 @@ void test_sort_emtpy_and_single(void)
 void test_sort_random(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     long i = 0;
     for (; i < 1000; ++i)
         list_add(l, rand() % 100000);
 
     sort_list(l);
 
-    _ListNode* current = l->head->next;
+    _node* current = l->head->next;
     while (current != NULL)
     {
         TEST_CHECK(current->prev->value <= current->value);
@@ -828,7 +828,7 @@ void test_sort_random(void)
 void test_large_sort(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
 
     long amnt = 1000000;
     long i = 0;
@@ -845,7 +845,7 @@ void test_large_sort(void)
     TEST_CHECK(l->jt_size == jt_size);
     TEST_CHECK(l->size == amnt);
 
-    _ListNode* current = l->head->next;
+    _node* current = l->head->next;
     long size = 0;
     while (current != NULL)
     {
@@ -869,7 +869,7 @@ void test_large_sort(void)
 void test_get_after_sort(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     long i = 10000;
     for (; i >= 0; --i)
         list_add(l, i);
@@ -889,7 +889,7 @@ void test_get_after_sort(void)
 void test_sort_sorted_list(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     long i = 0;
     for (; i < 1000; ++i)
         list_add(l, i);
@@ -917,10 +917,10 @@ enum ops
     Sort = 99
 };
 
-void op_add(List* l)
+void op_add(list* l)
 {
-    list_index_t prev_size = list_size(l);
-    _ListNode* prev_tail = l->tail;
+    lindex prev_size = list_size(l);
+    _node* prev_tail = l->tail;
     int val = rand();
     list_add(l, val);
     TEST_CHECK(list_size(l) == prev_size+1);
@@ -929,54 +929,54 @@ void op_add(List* l)
     TEST_CHECK(l->tail->prev == prev_tail);
 }
 
-void op_insert(List* l)
+void op_insert(list* l)
 {
     if (list_size(l) > 0)
     {
-        list_index_t prev_size = list_size(l);
+        lindex prev_size = list_size(l);
         int val = rand();
-        list_index_t index = rand() % list_size(l);
-        _ListNode* prev = _list_pointer_at(l, index);
+        lindex index = rand() % list_size(l);
+        _node* prev = _list_pointer_at(l, index);
         list_insert(l, index, val);
         TEST_CHECK(list_size(l) == prev_size+1);
-        _ListNode* current = _list_pointer_at(l, index);
+        _node* current = _list_pointer_at(l, index);
         TEST_CHECK(current->value == val);
         TEST_CHECK(current->next == prev);
     }
 }
 
-void op_pop(List* l)
+void op_pop(list* l)
 {
     if (list_size(l) > 0)
     {
-        list_index_t prev_size = list_size(l);
+        lindex prev_size = list_size(l);
         long expected_value = l->tail->value;
-        _ListNode* prev = l->tail->prev;
+        _node* prev = l->tail->prev;
         TEST_CHECK(list_pop(l) == expected_value);
         TEST_CHECK(list_size(l) == prev_size-1);
         TEST_CHECK(l->tail == prev);
     }
 }
 
-void op_remove(List* l)
+void op_remove(list* l)
 {
     if (list_size(l) > 0)
     {
-        list_index_t index = rand() % list_size(l);
-        list_index_t prev_size = list_size(l);
-        _ListNode* current = _list_pointer_at(l, index);
+        lindex index = rand() % list_size(l);
+        lindex prev_size = list_size(l);
+        _node* current = _list_pointer_at(l, index);
         long expected_value = current->value;
-        _ListNode* next = current->next;
+        _node* next = current->next;
         TEST_CHECK(list_remove(l, index) == expected_value);
         TEST_CHECK(list_size(l) == prev_size-1);
         TEST_CHECK(_list_pointer_at(l, index) == next);
     }
 }
 
-void op_sort(List* l)
+void op_sort(list* l)
 {
     sort_list(l);
-    _ListNode* current = l->head;
+    _node* current = l->head;
     while (current->next != NULL)
     {
         TEST_CHECK(current->value <= current->next->value);
@@ -985,7 +985,7 @@ void op_sort(List* l)
 
     if (l->jt_size > 1)
     {
-        list_index_t i = 0;
+        lindex i = 0;
         for (; i < l->jt_size-1; ++i)
         {
             if (l->jump_table[i+1] != NULL)
@@ -994,7 +994,7 @@ void op_sort(List* l)
     }
 }
 
-void battery_op(List* l, int seed)
+void battery_op(list* l, int seed)
 {
     int op = seed % 100;
 
@@ -1014,7 +1014,7 @@ void battery_op(List* l, int seed)
 void test_battery_of_operations(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int num_ops = 100000;
     int i = 0;
     for (; i < num_ops; ++i)
@@ -1040,14 +1040,14 @@ int lessthan500(long x)
 void test_where(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 10001; ++i)
     {
         list_add(l, i);
     }
 
-    List* collection = list_where(l, filter1to10);
+    list* collection = list_where(l, filter1to10);
     TEST_CHECK(list_size(collection) == 10);
     for (i = 0; i < 10; ++i)
         TEST_CHECK(list_get(collection, i) == i+1);
@@ -1066,8 +1066,8 @@ void test_where(void)
 void test_merge_small(void)
 {
     list_error_handler(error_handler);
-    List* l1 = new_list();
-    List* l2 = new_list();
+    list* l1 = new_list();
+    list* l2 = new_list();
 
     int i = 1;
     for (; i < 11; ++i)
@@ -1075,8 +1075,8 @@ void test_merge_small(void)
         list_add(l1, i);
         list_add(l2, i+10);
     }
-    list_index_t jt_size = l1->jt_size;
-    _ListNode* current_jt_node = l1->jump_table[0];
+    lindex jt_size = l1->jt_size;
+    _node* current_jt_node = l1->jump_table[0];
 
     list_merge(l1, l2);
     TEST_CHECK(l1->size == 20);
@@ -1094,7 +1094,7 @@ void test_merge_small(void)
 void test_merge_null(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     list_add(l, 0);
 
     list_merge(l, NULL);
@@ -1115,8 +1115,8 @@ void test_merge_null(void)
 void test_merge_doesnt_change_current(void)
 {
     list_error_handler(error_handler);
-    List* l1 = new_list();
-    List* l2 = new_list();
+    list* l1 = new_list();
+    list* l2 = new_list();
 
     int i = 1;
     for (; i < 11; ++i)
@@ -1137,8 +1137,8 @@ void test_merge_doesnt_change_current(void)
 void test_merge_5k_lists(void)
 {
     list_error_handler(error_handler);
-    List* l1 = new_list();
-    List* l2 = new_list();
+    list* l1 = new_list();
+    list* l2 = new_list();
 
     int i = 0;
     for (; i < 5000; ++i)
@@ -1162,8 +1162,8 @@ void test_merge_5k_lists(void)
 void test_merge_large_lists(void)
 {
     list_error_handler(error_handler);
-    List* l1 = new_list();
-    List* l2 = new_list();
+    list* l1 = new_list();
+    list* l2 = new_list();
 
     int i = 0;
     for (; i < 100000; ++i)
@@ -1187,12 +1187,12 @@ void test_merge_large_lists(void)
 void test_split(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 10; ++i)
         list_add(l, i);
 
-    List* new_l = list_split(l, 5);
+    list* new_l = list_split(l, 5);
     for (i = 0; i < 5; ++i)
     {
         TEST_CHECK(list_get(l, i) == i);
@@ -1210,12 +1210,12 @@ void test_split(void)
 void test_split_medium(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 10000; ++i)
         list_add(l, i);
 
-    List* new_l = list_split(l, 5000);
+    list* new_l = list_split(l, 5000);
     for (i = 0; i < 5000; ++i)
     {
         TEST_CHECK(list_get(l, i) == i);
@@ -1248,12 +1248,12 @@ void test_split_medium(void)
 void test_split_on_zero(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 10; ++i)
         list_add(l, i);
 
-    List* nl = list_split(l, 0);
+    list* nl = list_split(l, 0);
     TEST_CHECK(nl->size == 0);
     check_error_status(not_in_error);
     free_list(l);
@@ -1263,12 +1263,12 @@ void test_split_on_zero(void)
 void test_split_on_last(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 10; ++i)
         list_add(l, i);
 
-    List* nl = list_split(l, list_size(l)-1);
+    list* nl = list_split(l, list_size(l)-1);
     TEST_CHECK(list_size(nl) == 1);
     TEST_CHECK(list_size(l) == 9);
     TEST_CHECK(nl->head == nl->tail);
@@ -1281,11 +1281,11 @@ void test_split_on_last(void)
 void test_split_on_first(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 10; ++i)
         list_add(l, i);
-    List* nl = list_split(l, 1);
+    list* nl = list_split(l, 1);
     TEST_CHECK(list_size(l) == 1);
     TEST_CHECK(list_size(nl) == 9);
     TEST_CHECK(l->head == l->tail);
@@ -1298,17 +1298,17 @@ void test_split_on_first(void)
 void test_split_out_of_range(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 10; ++i)
         list_add(l, i);
-    List* nl = list_split(l, 11);
+    list* nl = list_split(l, 11);
     TEST_CHECK(nl == NULL);
     check_error_status(in_error);
     free_list(l);
 }
 
-int lists_equal(List* l1, List* l2)
+int lists_equal(list* l1, list* l2)
 {
     if (list_size(l1) != list_size(l2))
         return false;
@@ -1328,8 +1328,8 @@ int lists_equal(List* l1, List* l2)
 void test_split_and_merge(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
-    List* l1 = new_list();
+    list* l = new_list();
+    list* l1 = new_list();
     int i = 0;
     for (; i < 1000; ++i)
     {
@@ -1337,10 +1337,10 @@ void test_split_and_merge(void)
         list_add(l1, i);
     }
 
-    List* l2 = list_split(l1, 500);
+    list* l2 = list_split(l1, 500);
     TEST_CHECK(!lists_equal(l, l1));
-    List* l3 = list_split(l2, 250);
-    List* l4 = list_split(l3, 125);
+    list* l3 = list_split(l2, 250);
+    list* l4 = list_split(l3, 125);
 
     list_merge(l3, l4);
     list_merge(l2, l3);
@@ -1355,12 +1355,12 @@ void test_split_and_merge(void)
 void test_split_where(void)
 {
     list_error_handler(error_handler);
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 100; ++i)
         list_add(l, i);
 
-    List* nl = list_split_where(l, filter1to10);
+    list* nl = list_split_where(l, filter1to10);
     TEST_CHECK(list_size(nl) == 10);
     for (i = 0; i < 9; ++i)
         TEST_CHECK(list_get(nl, i) == i+1);
@@ -1398,13 +1398,13 @@ TEST_LIST = {
     {"Inserts expand jump table size", test_insert_expands_jt},
     {"Inserts modify the jump table", test_insert_modifies_jt},
     {"Random inserts and gets", test_random_insert_get},
-    {"List sorting", test_sorting},
+    {"list sorting", test_sorting},
     {"sort after get updates currrent", test_sort_updates_current},  
-    {"List sorting - empty and single", test_sort_emtpy_and_single},
-    {"List sorting - random value", test_sort_random},
-    {"List sorting - large", test_large_sort},
-    {"List sorting - get after sort", test_get_after_sort},
-    {"List sorting - repeat sorting list", test_sort_sorted_list},
+    {"list sorting - empty and single", test_sort_emtpy_and_single},
+    {"list sorting - random value", test_sort_random},
+    {"list sorting - large", test_large_sort},
+    {"list sorting - get after sort", test_get_after_sort},
+    {"list sorting - repeat sorting list", test_sort_sorted_list},
     {"Battery of random list operations", test_battery_of_operations},
     {"Where", test_where},
     {"Merge with small list", test_merge_small},

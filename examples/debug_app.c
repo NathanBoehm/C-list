@@ -31,10 +31,10 @@ enum ops
     Sort = 99
 };
 
-void op_add(List* l)
+void op_add(list* l)
 {
-    list_index_t prev_size = list_size(l);
-    _ListNode* prev_tail = l->tail;
+    lindex prev_size = list_size(l);
+    _node* prev_tail = l->tail;
     int val = rand();
     list_add(l, val);
     CHECK(list_size(l) == prev_size+1);
@@ -43,54 +43,54 @@ void op_add(List* l)
     CHECK(l->tail->prev == prev_tail);
 }
 
-void op_insert(List* l)
+void op_insert(list* l)
 {
     if (list_size(l) > 0)
     {
-        list_index_t prev_size = list_size(l);
+        lindex prev_size = list_size(l);
         int val = rand();
-        list_index_t index = rand() % list_size(l);
-        _ListNode* prev = _list_pointer_at(l, index);
+        lindex index = rand() % list_size(l);
+        _node* prev = _list_pointer_at(l, index);
         list_insert(l, index, val);
         CHECK(list_size(l) == prev_size+1);
-        _ListNode* current = _list_pointer_at(l, index);
+        _node* current = _list_pointer_at(l, index);
         CHECK(current->value == val);
         CHECK(current->next == prev);
     }
 }
 
-void op_pop(List* l)
+void op_pop(list* l)
 {
     if (list_size(l) > 0)
     {
-        list_index_t prev_size = list_size(l);
+        lindex prev_size = list_size(l);
         long expected_value = l->tail->value;
-        _ListNode* prev = l->tail->prev;
+        _node* prev = l->tail->prev;
         CHECK(list_pop(l) == expected_value);
         CHECK(list_size(l) == prev_size-1);
         CHECK(l->tail == prev);
     }
 }
 
-void op_remove(List* l)
+void op_remove(list* l)
 {
     if (list_size(l) > 0)
     {
-        list_index_t index = rand() % list_size(l);
-        list_index_t prev_size = list_size(l);
-        _ListNode* current = _list_pointer_at(l, index);
+        lindex index = rand() % list_size(l);
+        lindex prev_size = list_size(l);
+        _node* current = _list_pointer_at(l, index);
         long expected_value = current->value;
-        _ListNode* next = current->next;
+        _node* next = current->next;
         CHECK(list_remove(l, index) == expected_value);
         CHECK(list_size(l) == prev_size-1);
         CHECK(_list_pointer_at(l, index) == next);
     }
 }
 
-void op_sort(List* l)
+void op_sort(list* l)
 {
     sort_list(l);
-    _ListNode* current = l->head;
+    _node* current = l->head;
     while (current->next != NULL)
     {
         CHECK(current->value <= current->next->value);
@@ -99,7 +99,7 @@ void op_sort(List* l)
 
     if (l->jt_size > 1)
     {
-        list_index_t i = 0;
+        lindex i = 0;
         for (; i < l->jt_size-1; ++i)
         {
             if (l->jump_table[i+1] != NULL)
@@ -108,7 +108,7 @@ void op_sort(List* l)
     }
 }
 
-void battery_op(List* l, int seed)
+void battery_op(list* l, int seed)
 {
     int op = seed % 100;
 
@@ -131,12 +131,12 @@ int filter1to10(int x)
 
 int main(int argc, char* agrv[])
 {
-    List* l = new_list();
+    list* l = new_list();
     int i = 0;
     for (; i < 10; ++i)
         list_add(l, i);
 
-    List* new_l = list_split(l, 5);
+    list* new_l = list_split(l, 5);
     for (i = 0; i < 5; ++i)
     {
         list_get(l, i) == i;
@@ -150,7 +150,7 @@ int main(int argc, char* agrv[])
     free_list(l);
     free_list(new_l);
     /*
-    List* l = new_list();
+    list* l = new_list();
     int num_ops = 100000;
     int i = 0;
     for (; i < num_ops; ++i)
