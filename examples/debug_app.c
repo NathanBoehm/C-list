@@ -131,6 +131,7 @@ int filter1to10(int x)
 
 int main(int argc, char* agrv[])
 {
+    /*
     list* l = new_list();
     int i = 0;
     for (; i < 10; ++i)
@@ -149,9 +150,10 @@ int main(int argc, char* agrv[])
     //check_error_status(not_in_error);
     free_list(l);
     free_list(new_l);
-    /*
+    */
+    
     list* l = new_list();
-    int num_ops = 100000;
+    int num_ops = 300000;
     int i = 0;
     for (; i < num_ops; ++i)
     {
@@ -159,5 +161,5 @@ int main(int argc, char* agrv[])
     }
 
     free_list(l);
-    */
+    
 }

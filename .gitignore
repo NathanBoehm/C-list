@@ -1,3 +1,6 @@
 clist_test
 debug_app
 custom_free_test
+test/gmon.out
+test/prof_output
+test/profiler_app
